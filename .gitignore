@@ -2,3 +2,11 @@
 __pycache__/
 *.pyc
 reports/
+app/.venv/
+app/android/.gradle/
+app/android/build/
+app/android/app/build/
+app/android/app/src/main/python/
+app/android/local.properties
+app/dist/
+.playwright-cli/

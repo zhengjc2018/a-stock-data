@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>A股高开雷达</title>
+<style>
+  :root{
+    --bg:#f5f7fa; --panel:#ffffff; --line:#e2e8f0; --text:#1f2937; --sub:#64748b;
+    --up:#dc2626; --down:#0f9f6e; --accent:#2563eb; --accent-weak:#eff6ff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;font-size:14px}
+  header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
+  .head-inner{max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  header h1{font-size:17px;font-weight:700}
+  header .sub{color:var(--sub);font-size:12px}
+  .head-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .status{font-size:12px;color:var(--sub);padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:#f8fafc;white-space:nowrap}
+  .status.ok{color:var(--down);border-color:#b9e6d4;background:#ecfdf5}
+  .status.busy{color:var(--accent);border-color:#bfdbfe;background:var(--accent-weak)}
+  .status.err{color:var(--up);border-color:#fecaca;background:#fef2f2}
+  button{font:inherit;padding:6px 14px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);cursor:pointer}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  main{max-width:1100px;margin:0 auto;padding:16px 16px 48px}
+  section{margin-bottom:26px}
+  h2{font-size:15px;margin-bottom:12px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  h2 small{color:var(--sub);font-weight:400;font-size:12px}
+  .idx-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .idx{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;min-width:0}
+  .idx .nm{color:var(--sub);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .idx .pr{font-size:20px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
+  .idx .pc{font-size:13px;margin-top:2px;font-variant-numeric:tabular-nums}
+  .up{color:var(--up)} .down{color:var(--down)} .flat{color:var(--sub)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .chip{display:inline-flex;align-items:baseline;gap:6px;padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);font-size:12px;color:var(--sub)}
+  .chip b{color:var(--text);font-size:15px;font-variant-numeric:tabular-nums}
+  .flow-table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  #flow,#gap{overflow-x:auto}
+  .flow-table th,.flow-table td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .flow-table th{color:var(--sub);font-weight:500;font-size:12px;background:#f8fafc}
+  .flow-table th:first-child,.flow-table td:first-child,.flow-table th:nth-child(2),.flow-table td:nth-child(2){text-align:left}
+  .flow-table tr:last-child td{border-bottom:none}
+  .flow-table .nm{font-weight:600}
+  .flow-table .lead{color:var(--sub);font-size:12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gap-head{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+  .gap-meta{font-size:12px;color:var(--sub)}
+  .gap-table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .gap-table th,.gap-table td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .gap-table th{color:var(--sub);font-weight:500;font-size:12px;background:#f8fafc}
+  .gap-table th:first-child,.gap-table td:first-child,.gap-table th:nth-child(2),.gap-table td:nth-child(2),.gap-table th:nth-child(3),.gap-table td:nth-child(3),.gap-table th:nth-child(4),.gap-table td:nth-child(4),.gap-table th:last-child,.gap-table td:last-child{text-align:left}
+  .gap-table td.reason{max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#475569}
+  .gap-table tr:last-child td{border-bottom:none}
+  .rank{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:#f1f5f9;color:var(--sub);font-weight:600;font-size:12px}
+  .rank.top1{background:#fef3c7;color:#b45309}
+  .rank.top2{background:#e5e7eb;color:#4b5563}
+  .rank.top3{background:#fde8e8;color:#b91c1c}
+  .empty{padding:28px 16px;text-align:center;color:var(--sub);background:var(--panel);border:1px dashed var(--line);border-radius:8px;font-size:13px}
+  footer{max-width:1100px;margin:0 auto;padding:14px 16px 30px;color:var(--sub);font-size:12px;line-height:1.7}
+  @media (max-width:760px){
+    .idx-grid{grid-template-columns:repeat(2,1fr)}
+    .hide-sm{display:none}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="head-inner">
+    <h1>A股高开雷达</h1>
+    <span class="sub">行情 · 情绪 · 次日高开候选</span>
+    <div class="head-right">
+      <span id="status" class="status">连接中</span>
+      <span id="updated" class="status">--</span>
+      <button id="refresh">刷新</button>
+    </div>
+  </div>
+</header>
+<main>
+  <section>
+    <h2>市场总览 <small id="overview-time"></small></h2>
+    <div id="indices" class="idx-grid"></div>
+    <div id="chips" class="chips"></div>
+    <h2 style="margin-top:22px">行业资金流 · 今日主力净额</h2>
+    <div id="flow"><div class="empty">加载中...</div></div>
+  </section>
+  <section>
+    <div class="gap-head">
+      <h2 style="margin:0">次日高开推荐</h2>
+      <span id="gap-meta" class="gap-meta"></span>
+    </div>
+    <div id="gap"><div class="empty">加载中...</div></div>
+  </section>
+</main>
+<footer>
+  数据来自通达信、腾讯财经、东方财富、新浪等公开接口，仅供学习研究，不构成任何投资建议。
+</footer>
+<script src="/app.js"></script>
+</body>
+</html>

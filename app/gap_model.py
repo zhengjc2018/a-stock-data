@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """次日高开排序模型推理（纯 numpy，无 sklearn 依赖）。
 
-A 方案：train_gap_model.py 在桌面/云端生成 gap_model.json，这里只加载权重做
-sigmoid(w·x+b)，Android / Windows / 网页共用同一份 JSON。没有模型或模型损坏时
-调用方回退规则评分，不影响线上逻辑。
+支持两种模型格式：
+1. 旧版逻辑回归：sigmoid(w·x+b)
+2. GBDT：浅层回归树集成 + sigmoid + 可选 isotonic 概率校准
+模型文件由 train_gap_v2.py 离线生成，App/EXE/APK 共用同一份 JSON。
 """
 from __future__ import annotations
 
@@ -34,32 +35,60 @@ def _validate(raw):
     if not isinstance(raw, dict):
         return None
     features = raw.get("features")
-    mean = raw.get("mean")
-    std = raw.get("std")
-    weights = raw.get("weights")
-    intercept = raw.get("intercept")
     if not (isinstance(features, list) and features):
         return None
-    if not all(isinstance(x, list) for x in (mean, std, weights)):
-        return None
-    if not (len(features) == len(mean) == len(std) == len(weights)):
-        return None
+    model = {
+        "type": str(raw.get("type") or "logistic"),
+        "features": [str(x) for x in features],
+        "version": raw.get("version"),
+        "trained_at": raw.get("trained_at"),
+        "n_samples": raw.get("n_samples"),
+        "metrics": raw.get("metrics"),
+        "date_range": raw.get("date_range"),
+    }
     try:
-        model = {
-            "features": [str(x) for x in features],
-            "mean": np.asarray(mean, dtype=float),
-            "std": np.asarray(std, dtype=float),
-            "weights": np.asarray(weights, dtype=float),
-            "intercept": float(intercept),
-            "version": raw.get("version"),
-            "trained_at": raw.get("trained_at"),
-            "n_samples": raw.get("n_samples"),
-            "metrics": raw.get("metrics"),
-            "date_range": raw.get("date_range"),
-        }
-    except (TypeError, ValueError):
+        if model["type"] == "gbdt":
+            trees = raw.get("trees") or []
+            if not isinstance(trees, list) or not trees:
+                return None
+            parsed = []
+            for t in trees:
+                node = {
+                    "left": np.asarray(t["left"], dtype=np.int64),
+                    "right": np.asarray(t["right"], dtype=np.int64),
+                    "feature": np.asarray(t["feature"], dtype=np.int64),
+                    "threshold": np.asarray(t["threshold"], dtype=float),
+                    "value": np.asarray(t["value"], dtype=float),
+                }
+                if not (len(node["left"]) == len(node["right"]) == len(node["feature"]) ==
+                        len(node["threshold"]) == len(node["value"])):
+                    return None
+                parsed.append(node)
+            model["trees"] = parsed
+            model["init_score"] = float(raw.get("init_score", 0.0))
+            model["learning_rate"] = float(raw.get("learning_rate", 0.1))
+            calib = raw.get("calib")
+            if calib:
+                model["calib"] = {
+                    "thresholds": np.asarray(calib["thresholds"], dtype=float),
+                    "targets": np.asarray(calib["targets"], dtype=float),
+                }
+        else:
+            mean = raw.get("mean")
+            std = raw.get("std")
+            weights = raw.get("weights")
+            intercept = raw.get("intercept")
+            if not all(isinstance(x, list) for x in (mean, std, weights)):
+                return None
+            if not (len(features) == len(mean) == len(std) == len(weights)):
+                return None
+            model["mean"] = np.asarray(mean, dtype=float)
+            model["std"] = np.asarray(std, dtype=float)
+            model["std"][model["std"] < 1e-8] = 1.0
+            model["weights"] = np.asarray(weights, dtype=float)
+            model["intercept"] = float(intercept)
+    except (TypeError, ValueError, KeyError):
         return None
-    model["std"][model["std"] < 1e-8] = 1.0
     return model
 
 
@@ -98,6 +127,7 @@ def meta():
     if not m:
         return None
     return {
+        "type": m.get("type"),
         "version": m.get("version"),
         "trained_at": m.get("trained_at"),
         "features": m.get("features"),
@@ -110,6 +140,31 @@ def meta():
 def model_features():
     m = _load()
     return list(m["features"]) if m else []
+
+
+def _sig(z):
+    z = max(min(z, 50.0), -50.0)
+    return 1.0 / (1.0 + math.exp(-z))
+
+
+def _gbdt_raw(m, x):
+    z = float(m["init_score"])
+    for tree in m["trees"]:
+        node = 0
+        left = tree["left"]
+        right = tree["right"]
+        feat = tree["feature"]
+        thr = tree["threshold"]
+        while True:
+            f = int(feat[node])
+            if f < 0 or f >= len(x):
+                break
+            nxt = int(left[node]) if float(x[f]) <= float(thr[node]) else int(right[node])
+            if nxt < 0:
+                break
+            node = nxt
+        z += float(tree["value"][node]) * float(m["learning_rate"])
+    return z
 
 
 def score(features) -> float | None:
@@ -130,9 +185,14 @@ def score(features) -> float | None:
                 return None
             if math.isnan(x[i]):
                 return None
+        if m["type"] == "gbdt":
+            p = _sig(_gbdt_raw(m, x))
+            calib = m.get("calib")
+            if calib is not None:
+                p = float(np.interp(p, calib["thresholds"], calib["targets"]))
+                p = max(min(p, 1.0), 0.0)
+            return p
         x = (x - m["mean"]) / m["std"]
-        z = float(x @ m["weights"] + m["intercept"])
-        z = max(min(z, 50.0), -50.0)
-        return 1.0 / (1.0 + math.exp(-z))
-    except (KeyError, TypeError, ValueError):
+        return _sig(float(x @ m["weights"] + m["intercept"]))
+    except (KeyError, TypeError, ValueError, IndexError):
         return None

@@ -281,6 +281,14 @@ def _add_features(df: pd.DataFrame) -> pd.DataFrame:
     out["dist_low60"] = out["close"] / low60 - 1
     amount = out["amount"] if "amount" in out.columns else out["close"] * out["volume"]
     out["amount_yi"] = amount / 1e8
+    out["ret_5"] = out["close"] / out["close"].shift(5) - 1
+    out["ret_10"] = out["close"] / out["close"].shift(10) - 1
+    out["pos_ma5"] = out["close"] / out["close"].rolling(5).mean() - 1
+    out["pos_ma10"] = out["close"] / out["close"].rolling(10).mean() - 1
+    out["vol_ratio_10"] = out["volume"] / out["volume"].rolling(10).mean().shift(1)
+    out["vol_20"] = out["close"].pct_change().rolling(20).std()
+    out["gap_count_20"] = (out["open"] / prev_close - 1 > 0.005).rolling(20).sum()
+    out["up_days_5"] = (out["close"] > prev_close).rolling(5).sum()
     return out
 
 
@@ -392,16 +400,25 @@ def build_candidates(
             last = hist.iloc[-1]
             features = {
                 "vol_ratio_5": _to_float(last.get("vol_ratio_5"), None),
+                "vol_ratio_10": _to_float(last.get("vol_ratio_10"), None),
                 "amplitude_pct": _to_float(last.get("amplitude_pct"), None),
                 "dist_high60": _to_float(last.get("dist_high60"), None),
                 "dist_low60": _to_float(last.get("dist_low60"), None),
                 "pos_ma20": _to_float(last.get("pos_ma20"), None),
                 "pos_ma60": _to_float(last.get("pos_ma60"), None),
+                "pos_ma5": _to_float(last.get("pos_ma5"), None),
+                "pos_ma10": _to_float(last.get("pos_ma10"), None),
                 "amount_yi": _to_float(last.get("amount_yi"), None),
                 "pct_chg": _to_float(last.get("pct_chg"), None),
                 "body_ratio": _to_float(last.get("body_ratio"), None),
+                "ret_5": _to_float(last.get("ret_5"), None),
+                "ret_10": _to_float(last.get("ret_10"), None),
+                "vol_20": _to_float(last.get("vol_20"), None),
+                "gap_count_20": _to_float(last.get("gap_count_20"), None),
+                "up_days_5": _to_float(last.get("up_days_5"), None),
                 "prev_limit_up": int(_to_float(last.get("prev_limit_up"), 0)),
                 "limit_streak_prev": int(_to_float(last.get("limit_streak_prev"), 0)),
+                "industry_zt_count": 0,
             }
             if any(v is None or pd.isna(v) for v in features.values()):
                 return None
@@ -432,6 +449,7 @@ def build_candidates(
         )
     for candidate in out:
         candidate["industry_limit_count"] = int(heat.get(candidate["industry"], 0))
+        candidate["industry_zt_count"] = candidate["industry_limit_count"]
     return out
 
 

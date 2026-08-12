@@ -1,0 +1,302 @@
+# -*- coding: utf-8 -*-
+"""次日高开 GBDT 训练（v2）：新增技术特征 + 行业涨停热度 + 概率校准。
+
+产物 gap_model.json 由 App/EXE/APK 用纯 numpy 推理，运行时不依赖 sklearn。
+样本口径与 gap_pick.py 对齐：主板、排除 ST/当日涨停/价格>80；
+标签 = T+1 开盘 >= 信号日收盘 * 1.01。
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import os
+import time
+from concurrent.futures import ThreadPoolExecutor
+
+import numpy as np
+import pandas as pd
+from sklearn.calibration import IsotonicRegression
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.metrics import roc_auc_score
+
+import datahub as server
+import gap_pick
+import paths
+
+MODEL_FEATURES = [
+    "pct_chg",
+    "vol_ratio_5",
+    "vol_ratio_10",
+    "amplitude_pct",
+    "body_ratio",
+    "pos_ma5",
+    "pos_ma10",
+    "pos_ma20",
+    "pos_ma60",
+    "dist_high60",
+    "dist_low60",
+    "amount_yi",
+    "ret_5",
+    "ret_10",
+    "vol_20",
+    "gap_count_20",
+    "up_days_5",
+    "prev_limit_up",
+    "limit_streak_prev",
+]
+
+DAILY_BARS = 800
+
+
+def fetch_daily(code):
+    secid = f"{'1' if code.startswith('6') else '0'}.{code}"
+    try:
+        rows = server._klines(secid, 101, DAILY_BARS)
+    except Exception:
+        return None
+    if not rows:
+        return None
+    df = pd.DataFrame(rows)
+    if df.empty or "date" not in df.columns:
+        return None
+    if "volume" not in df.columns and "vol" in df.columns:
+        df = df.rename(columns={"vol": "volume"})
+    df = df[["date", "open", "high", "low", "close", "volume", "amount"]].copy()
+    for col in ("open", "high", "low", "close", "volume", "amount"):
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    df = df.dropna(subset=["open", "high", "low", "close"]).drop_duplicates("date")
+    df = df.sort_values("date").reset_index(drop=True)
+    if len(df) < gap_pick.MIN_HISTORY_BARS + 5:
+        return None
+    df = gap_pick._add_limit_labels(df)
+    df = gap_pick._add_features(df)
+    return df
+
+
+def sample_codes(limit):
+    snapshot = gap_pick.fetch_market_snapshot()
+    if snapshot.empty:
+        return []
+    df = snapshot[snapshot["code"].astype(str).str.zfill(6).map(gap_pick._board_of) == "main"]
+    codes = df["code"].astype(str).str.zfill(6).unique().tolist()
+    if limit and limit < len(codes):
+        rng = np.random.default_rng(42)
+        codes = rng.choice(codes, size=limit, replace=False).tolist()
+    return codes
+
+
+def collect_samples(codes, start, end, verbose=True):
+    rows = []
+    t0 = time.time()
+    n_valid = 0
+
+    def _load(code):
+        code = str(code).zfill(6)
+        return code, fetch_daily(code), (gap_pick._stock_industry(code) or "未知行业")
+
+    with ThreadPoolExecutor(max_workers=4, thread_name_prefix="gap-train") as ex:
+        futures = [ex.submit(_load, c) for c in codes]
+        done = 0
+        for fut in futures:
+            try:
+                code, df, industry = fut.result(timeout=120)
+            except Exception:
+                continue
+            done += 1
+            if df is None:
+                continue
+            n_valid += 1
+            _append_rows(code, df, industry, start, end, rows)
+            if verbose and done % 50 == 0:
+                el = time.time() - t0
+                print(f"[train] {done}/{len(codes)} 有效 {n_valid} 只 | 样本 {len(rows)} | 已用 {el:.0f}s", flush=True)
+    return rows, n_valid
+
+
+def _append_rows(code, df, industry, start, end, rows):
+    for j in range(len(df) - 1):
+        r = df.iloc[j]
+        nxt = df.iloc[j + 1]
+        date = str(r["date"])[:10]
+        if start and date < start:
+            continue
+        if end and date > end:
+            continue
+        price = float(r["close"])
+        if not gap_pick._price_ok(price, None):
+            continue
+        if not gap_pick._not_limit_up(float(r.get("pct_chg") or 0.0)):
+            continue
+        feats = {}
+        bad = False
+        for name in MODEL_FEATURES:
+            if name == "industry_zt_count":
+                feats[name] = 0.0
+                continue
+            v = r.get(name)
+            try:
+                fv = float(v)
+            except (TypeError, ValueError):
+                bad = True
+                break
+            if math.isnan(fv):
+                bad = True
+                break
+            feats[name] = fv
+        if bad:
+            continue
+        label = 1 if float(nxt["open"]) >= price * 1.01 else 0
+        rows.append({"date": date, "code": code, "industry": industry,
+                     **feats, "label": label})
+
+
+def load_zt_heat(dates):
+    heat = {}
+    for i, date in enumerate(sorted(dates), 1):
+        try:
+            zt = gap_pick.fetch_zt_pool(date)
+        except Exception:
+            continue
+        if zt is None or zt.empty:
+            continue
+        col = "所属行业" if "所属行业" in zt.columns else "industry"
+        for industry, cnt in zt[col].fillna("未知行业").value_counts().items():
+            heat[(date, str(industry))] = int(cnt)
+        if i % 50 == 0:
+            print(f"[train] zt heat {i}/{len(dates)}", flush=True)
+    return heat
+
+
+def topk_rates(df, col, ks=(1, 3, 10)):
+    out = {k: [0, 0] for k in ks}
+    for _, g in df.groupby("date", sort=True):
+        g = g.sort_values(col, ascending=False)
+        for k in ks:
+            if len(g) < k:
+                continue
+            out[k][1] += 1
+            if bool(g.iloc[:k]["label"].any()):
+                out[k][0] += 1
+    return {k: round(out[k][0] / max(1, out[k][1]), 4) for k in ks}
+
+
+def split_by_date(df, train_frac=0.7, val_frac=0.15):
+    dates = sorted(df["date"].unique())
+    n = len(dates)
+    train_end = dates[max(1, int(n * train_frac) - 1)]
+    val_end = dates[max(1, int(n * (train_frac + val_frac)) - 1)]
+    train = df[df["date"] <= train_end].copy()
+    val = df[(df["date"] > train_end) & (df["date"] <= val_end)].copy()
+    test = df[df["date"] > val_end].copy()
+    return train, val, test
+
+
+def export_gbdt(model, calib, features, metrics, start, end, n_samples):
+    trees = []
+    for est in model.estimators_[:, 0]:
+        t = est.tree_
+        trees.append({
+            "left": t.children_left.tolist(),
+            "right": t.children_right.tolist(),
+            "feature": t.feature.tolist(),
+            "threshold": t.threshold.tolist(),
+            "value": t.value.reshape(-1).tolist(),
+        })
+    return {
+        "type": "gbdt",
+        "features": features,
+        "init_score": 0.0 if isinstance(model.init_, str) else float(model.init_.prior),
+        "learning_rate": float(model.learning_rate),
+        "trees": trees,
+        "calib": {
+            "thresholds": calib.X_thresholds_.tolist(),
+            "targets": calib.y_thresholds_.tolist(),
+        },
+        "version": 2,
+        "trained_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "n_samples": n_samples,
+        "metrics": metrics,
+        "date_range": [start, end],
+    }
+
+
+def main():
+    ap = argparse.ArgumentParser(description="次日高开 GBDT 训练 v2")
+    ap.add_argument("--codes", type=str, default=None)
+    ap.add_argument("--limit", type=int, default=500, help="采样股票数")
+    ap.add_argument("--trees", type=int, default=150)
+    ap.add_argument("--depth", type=int, default=3)
+    ap.add_argument("--start", default="2024-08-01")
+    ap.add_argument("--end", default=time.strftime("%Y-%m-%d"))
+    ap.add_argument("--out", default="gap_model_v2.json")
+    ap.add_argument("--no-zt-heat", action="store_true")
+    args = ap.parse_args()
+
+    if args.codes:
+        codes = [c.strip().zfill(6) for c in args.codes.split(",") if c.strip()]
+    else:
+        codes = sample_codes(args.limit)
+    print(f"[train] codes: {len(codes)}", flush=True)
+
+    rows, n_valid = collect_samples(codes, args.start, args.end)
+    if not rows:
+        print("no samples")
+        return
+    df = pd.DataFrame(rows)
+    print(f"[train] raw samples {len(df)} valid_stocks {n_valid}", flush=True)
+
+    if not args.no_zt_heat:
+        heat = load_zt_heat(df["date"].unique())
+        df["industry_zt_count"] = df.apply(
+            lambda r: heat.get((r["date"], r["industry"]), 0), axis=1)
+        print("[train] zt heat joined", flush=True)
+
+    train, val, test = split_by_date(df)
+    print(f"[train] train {len(train)} val {len(val)} test {len(test)}", flush=True)
+    if len(train) < 2000 or len(val) < 500 or len(test) < 500:
+        print("too few samples")
+        return
+
+    Xtr = train[MODEL_FEATURES].values
+    ytr = train["label"].values
+    model = GradientBoostingClassifier(
+        n_estimators=args.trees,
+        max_depth=args.depth,
+        learning_rate=0.05,
+        subsample=0.8,
+        random_state=42,
+        init="zero",
+    )
+    print("[train] fitting GBDT...", flush=True)
+    t0 = time.time()
+    model.fit(Xtr, ytr)
+    print(f"[train] fit done {time.time() - t0:.0f}s", flush=True)
+
+    def proba(df_in):
+        return model.predict_proba(df_in[MODEL_FEATURES].values)[:, 1]
+
+    val_p = proba(val)
+    test_p = proba(test)
+    val["prob"] = val_p
+    test["prob"] = test_p
+    auc = roc_auc_score(test["label"], test_p)
+    metrics = {
+        "base_rate": round(float(test["label"].mean()), 4),
+        "test_auc": round(float(auc), 4),
+        "test_top1": topk_rates(test, "prob", (1,))[1],
+        "test_top3": topk_rates(test, "prob", (3,))[3],
+        "test_top10": topk_rates(test, "prob", (10,))[10],
+    }
+    print("[train] metrics", metrics, flush=True)
+
+    calib = IsotonicRegression(out_of_bounds="clip")
+    calib.fit(val_p, val["label"].values)
+    payload = export_gbdt(model, calib, MODEL_FEATURES, metrics, args.start, args.end, len(df))
+    with open(args.out, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False)
+    print(f"[train] saved {args.out} ({(os.path.getsize(args.out) / 1024):.0f} KB)", flush=True)
+
+
+if __name__ == "__main__":
+    main()

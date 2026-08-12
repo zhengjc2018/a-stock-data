@@ -51,7 +51,7 @@ function table(headers, rows) {
       headers.map((h) => {
         const raw = r[h.key];
         const val = h.format ? h.format(raw, r) : (raw === null || raw === undefined ? "--" : raw);
-        return `<td class="${h.align === "left" ? "left" : ""} ${h.cls ? h.cls(raw, r) : ""} ${h.hideSm ? "hide-sm" : ""}">${esc(val)}</td>`;
+        return `<td class="${h.align === "left" ? "left" : ""} ${h.cls ? h.cls(raw, r) : ""} ${h.hideSm ? "hide-sm" : ""}">${h.raw ? val : esc(val)}</td>`;
       }).join("")
     }</tr>`).join("")
   }</tbody></table></div>`;
@@ -189,7 +189,7 @@ function renderPool(d, key) {
       { key: "market", label: "市场" },
       { key: "start", label: "开始" },
       { key: "end", label: "结束" },
-      { key: "link", label: "链接", align: "left", format: (v) => v ? `<a href="${esc(v)}" target="_blank">查看</a>` : "--" },
+      { key: "link", label: "链接", align: "left", raw: true, format: (v) => v ? `<a href="${esc(v)}" target="_blank">查看</a>` : "--" },
     ], rows);
     return;
   }
@@ -286,7 +286,7 @@ function renderGap(payload) {
   const ranking = data.ranking === "model" ? "模型概率排序" : "规则评分排序";
   meta.textContent = `${data.date} · ${ranking} · 候选 ${data.total} 只 · 耗时 ${data.elapsed_sec}s`;
   box.innerHTML = table([
-    { key: "rank", label: "#", align: "left", format: (v, r) => `<b>${r._i + 1}</b>` },
+    { key: "rank", label: "#", align: "left", raw: true, format: (v, r) => `<b>${r._i + 1}</b>` },
     { key: "code", label: "代码", align: "left" },
     { key: "name", label: "名称", align: "left" },
     { key: "industry", label: "行业", align: "left", hideSm: true },

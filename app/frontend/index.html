@@ -59,6 +59,9 @@
   .sub-tab{padding:5px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--sub);font-size:12px;cursor:pointer}
   .sub-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
   .empty{padding:28px 16px;text-align:center;color:var(--sub);background:var(--panel);border:1px dashed var(--line);border-radius:8px;font-size:13px}
+  .logic{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:12px;color:#475569;line-height:1.9}
+  .logic b{color:var(--text)}
+  .logic .lg-title{font-weight:700;color:var(--accent);margin-bottom:4px}
   .news-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
   .news-col{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px}
   .news-col h3{font-size:13px;margin-bottom:8px}
@@ -159,6 +162,14 @@
       <div class="toolbar">
         <h2 style="margin:0">次日高开推荐</h2>
         <span id="gap-meta" style="color:var(--sub);font-size:12px"></span>
+      </div>
+      <div class="logic">
+        <div class="lg-title">选股逻辑</div>
+        <div>范围：仅沪深主板（000/001/002/600/601/603/605），排除创业板、科创板、北交所</div>
+        <div>排除：ST / *ST / 退市风险，当日涨停，价格 &gt; 80 元，PE ≤ 0 或 &gt; 100，PB &gt; 5</div>
+        <div>行业：剔除白酒、证券、地产、消费、食品饮料、零售、商贸、家电</div>
+        <div>评分因子：量比（5日均量）、振幅、MA20/MA60 位置、60日高低点距离、成交额、板块涨停家数</div>
+        <div>排序：模型概率优先，无模型时按规则评分，展示 Top 10</div>
       </div>
       <div id="gap"><div class="empty">加载中...</div></div>
     </section>

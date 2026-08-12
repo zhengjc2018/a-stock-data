@@ -284,7 +284,7 @@ function renderGap(payload) {
   }
   setStatus("已连接", "ok");
   const ranking = data.ranking === "model" ? "模型概率排序" : "规则评分排序";
-  meta.textContent = `${data.date} · ${ranking} · 候选 ${data.total} 只 · 耗时 ${data.elapsed_sec}s`;
+  meta.textContent = `${data.date} · 仅主板 · ${ranking} · 候选 ${data.total} 只 · 耗时 ${data.elapsed_sec}s`;
   box.innerHTML = table([
     { key: "rank", label: "#", align: "left", raw: true, format: (v, r) => `<b>${r._i + 1}</b>` },
     { key: "code", label: "代码", align: "left" },

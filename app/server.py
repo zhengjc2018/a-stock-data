@@ -21,6 +21,7 @@ _OVERVIEW_LOCK = threading.Lock()
 _OVERVIEW_TTL = 30
 _CACHE = {}
 _CACHE_LOCK = threading.Lock()
+GAP_SCOPE = {"main": True, "chi_next": False, "st": False}
 
 
 def cached(key, ttl, fn):
@@ -91,19 +92,20 @@ def api_overview():
 
 @app.route("/api/gap")
 def api_gap():
-    data = gap_pick.get_cache()
+    data = gap_pick.get_cache(GAP_SCOPE)
     return jsonify({
         "data": data,
         "computing": gap_pick.is_computing(),
         "ts": gap_pick.cache_ts(),
         "last_err": gap_pick.last_err(),
         "model": gap_model.meta(),
+        "scope": GAP_SCOPE,
     })
 
 
 @app.route("/api/gap/refresh", methods=["POST"])
 def api_gap_refresh():
-    started = gap_pick.trigger_refresh()
+    started = gap_pick.trigger_refresh(GAP_SCOPE)
     return jsonify({"started": started, "computing": gap_pick.is_computing()})
 
 
@@ -227,7 +229,7 @@ def start_background():
         except Exception:
             pass
         try:
-            gap_pick.trigger_refresh()
+            gap_pick.trigger_refresh(GAP_SCOPE)
         except Exception as e:
             print(f"[background] gap warm err: {e}", flush=True)
 

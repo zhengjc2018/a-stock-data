@@ -12,8 +12,8 @@
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;font-size:14px}
-  header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
-  .head-inner{max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  header{position:sticky;top:0;z-index:30;background:var(--panel);border-bottom:1px solid var(--line)}
+  .head-inner{max-width:1180px;margin:0 auto;padding:12px 16px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   header h1{font-size:17px;font-weight:700}
   header .sub{color:var(--sub);font-size:12px}
   .head-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -23,7 +23,14 @@
   .status.err{color:var(--up);border-color:#fecaca;background:#fef2f2}
   button{font:inherit;padding:6px 14px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);cursor:pointer}
   button:hover{border-color:var(--accent);color:var(--accent)}
-  main{max-width:1100px;margin:0 auto;padding:16px 16px 48px}
+  .tabs{max-width:1180px;margin:0 auto;display:flex;gap:2px;overflow-x:auto;padding:10px 12px 0;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{padding:8px 14px;border:none;background:transparent;color:var(--sub);font-size:13px;border-radius:8px 8px 0 0;white-space:nowrap;border-bottom:2px solid transparent}
+  .tab:hover{color:var(--text);background:#f8fafc}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);background:var(--accent-weak)}
+  main{max-width:1180px;margin:0 auto;padding:16px 16px 48px}
+  .view{display:none}
+  .view.active{display:block}
   section{margin-bottom:26px}
   h2{font-size:15px;margin-bottom:12px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
   h2 small{color:var(--sub);font-weight:400;font-size:12px}
@@ -36,31 +43,39 @@
   .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
   .chip{display:inline-flex;align-items:baseline;gap:6px;padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);font-size:12px;color:var(--sub)}
   .chip b{color:var(--text);font-size:15px;font-variant-numeric:tabular-nums}
-  .flow-table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
-  #flow,#gap{overflow-x:auto}
-  .flow-table th,.flow-table td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap}
-  .flow-table th{color:var(--sub);font-weight:500;font-size:12px;background:#f8fafc}
-  .flow-table th:first-child,.flow-table td:first-child,.flow-table th:nth-child(2),.flow-table td:nth-child(2){text-align:left}
-  .flow-table tr:last-child td{border-bottom:none}
-  .flow-table .nm{font-weight:600}
-  .flow-table .lead{color:var(--sub);font-size:12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .gap-head{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
-  .gap-meta{font-size:12px;color:var(--sub)}
-  .gap-table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
-  .gap-table th,.gap-table td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap}
-  .gap-table th{color:var(--sub);font-weight:500;font-size:12px;background:#f8fafc}
-  .gap-table th:first-child,.gap-table td:first-child,.gap-table th:nth-child(2),.gap-table td:nth-child(2),.gap-table th:nth-child(3),.gap-table td:nth-child(3),.gap-table th:nth-child(4),.gap-table td:nth-child(4),.gap-table th:last-child,.gap-table td:last-child{text-align:left}
-  .gap-table td.reason{max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#475569}
-  .gap-table tr:last-child td{border-bottom:none}
-  .rank{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:#f1f5f9;color:var(--sub);font-weight:600;font-size:12px}
-  .rank.top1{background:#fef3c7;color:#b45309}
-  .rank.top2{background:#e5e7eb;color:#4b5563}
-  .rank.top3{background:#fde8e8;color:#b91c1c}
+  .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  select,input{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text)}
+  input:focus,select:focus{outline:none;border-color:var(--accent)}
+  .table-scroll{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:640px}
+  th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap}
+  th{color:var(--sub);font-weight:500;font-size:12px;background:#f8fafc}
+  th:first-child,td:first-child{text-align:left}
+  th.left,td.left{text-align:left}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#f8fafc}
+  .nm{font-weight:600}
+  .sub-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .sub-tab{padding:5px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--sub);font-size:12px;cursor:pointer}
+  .sub-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
   .empty{padding:28px 16px;text-align:center;color:var(--sub);background:var(--panel);border:1px dashed var(--line);border-radius:8px;font-size:13px}
-  footer{max-width:1100px;margin:0 auto;padding:14px 16px 30px;color:var(--sub);font-size:12px;line-height:1.7}
+  .news-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+  .news-col{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px}
+  .news-col h3{font-size:13px;margin-bottom:8px}
+  .news-item{padding:7px 0;border-bottom:1px dashed var(--line);font-size:12px;line-height:1.6}
+  .news-item:last-child{border-bottom:none}
+  .news-item .t{font-weight:600}
+  .news-item .d{color:var(--sub);font-size:11px;margin-top:2px}
+  .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+  .summary{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .summary .k{color:var(--sub);font-size:11px}
+  .summary .v{font-size:15px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+  .opt-call{color:var(--up)} .opt-put{color:var(--down)}
+  footer{max-width:1180px;margin:0 auto;padding:14px 16px 30px;color:var(--sub);font-size:12px;line-height:1.7}
   @media (max-width:760px){
     .idx-grid{grid-template-columns:repeat(2,1fr)}
     .hide-sm{display:none}
+    .news-list{grid-template-columns:1fr}
   }
 </style>
 </head>
@@ -68,32 +83,118 @@
 <header>
   <div class="head-inner">
     <h1>A股高开雷达</h1>
-    <span class="sub">行情 · 情绪 · 次日高开候选</span>
+    <span class="sub">行情 · 情绪 · 高开 · 个股 · 期权</span>
     <div class="head-right">
       <span id="status" class="status">连接中</span>
       <span id="updated" class="status">--</span>
       <button id="refresh">刷新</button>
     </div>
   </div>
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-view="overview">总览</button>
+    <button class="tab" data-view="pools">打板</button>
+    <button class="tab" data-view="boards">板块</button>
+    <button class="tab" data-view="hot">热榜资讯</button>
+    <button class="tab" data-view="lhb">龙虎榜</button>
+    <button class="tab" data-view="gap">次日高开</button>
+    <button class="tab" data-view="stock">个股雷达</button>
+    <button class="tab" data-view="options">ETF期权</button>
+  </nav>
 </header>
 <main>
-  <section>
-    <h2>市场总览 <small id="overview-time"></small></h2>
-    <div id="indices" class="idx-grid"></div>
-    <div id="chips" class="chips"></div>
-    <h2 style="margin-top:22px">行业资金流 · 今日主力净额</h2>
-    <div id="flow"><div class="empty">加载中...</div></div>
-  </section>
-  <section>
-    <div class="gap-head">
-      <h2 style="margin:0">次日高开推荐</h2>
-      <span id="gap-meta" class="gap-meta"></span>
-    </div>
-    <div id="gap"><div class="empty">加载中...</div></div>
-  </section>
+  <div id="view-overview" class="view active">
+    <section>
+      <h2>市场总览 <small id="overview-time"></small></h2>
+      <div id="indices" class="idx-grid"></div>
+      <div id="chips" class="chips"></div>
+      <h2 style="margin-top:22px">行业资金流 · 今日主力净额</h2>
+      <div id="overview-flow"><div class="empty">加载中...</div></div>
+    </section>
+  </div>
+
+  <div id="view-pools" class="view">
+    <section>
+      <h2>打板情绪 <small id="pools-meta"></small></h2>
+      <div class="sub-tabs" id="pools-tabs"></div>
+      <div id="pools-content"><div class="empty">加载中...</div></div>
+    </section>
+  </div>
+
+  <div id="view-boards" class="view">
+    <section>
+      <h2>板块资金流 <small>主力净额 · 涨跌幅 · 领涨股</small></h2>
+      <div class="toolbar">
+        <select id="board-type">
+          <option value="industry">行业</option>
+          <option value="concept">概念</option>
+          <option value="region">地域</option>
+        </select>
+        <select id="board-period">
+          <option value="today">今日</option>
+          <option value="5d">5日</option>
+          <option value="10d">10日</option>
+        </select>
+        <button id="board-load">查询</button>
+      </div>
+      <div id="boards-content"><div class="empty">加载中...</div></div>
+    </section>
+  </div>
+
+  <div id="view-hot" class="view">
+    <section>
+      <h2>热榜与资讯 <small id="hot-meta"></small></h2>
+      <div id="hot-content"><div class="empty">加载中...</div></div>
+    </section>
+  </div>
+
+  <div id="view-lhb" class="view">
+    <section>
+      <h2>全市场龙虎榜 <small id="lhb-meta"></small></h2>
+      <div id="lhb-content"><div class="empty">加载中...</div></div>
+    </section>
+  </div>
+
+  <div id="view-gap" class="view">
+    <section>
+      <div class="toolbar">
+        <h2 style="margin:0">次日高开推荐</h2>
+        <span id="gap-meta" style="color:var(--sub);font-size:12px"></span>
+      </div>
+      <div id="gap"><div class="empty">加载中...</div></div>
+    </section>
+  </div>
+
+  <div id="view-stock" class="view">
+    <section>
+      <h2>个股雷达 <small>估值 · 研报 · 资金 · 公告 · 财报</small></h2>
+      <div class="toolbar">
+        <input id="stock-code" placeholder="输入 6 位股票代码" maxlength="6" inputmode="numeric">
+        <button id="stock-load">查询</button>
+      </div>
+      <div id="stock-summary"></div>
+      <div class="sub-tabs" id="stock-tabs"></div>
+      <div id="stock-content"><div class="empty">输入代码开始查询</div></div>
+    </section>
+  </div>
+
+  <div id="view-options" class="view">
+    <section>
+      <h2>ETF 期权 <small id="options-meta"></small></h2>
+      <div class="toolbar">
+        <select id="option-etf">
+          <option value="510050">50ETF</option>
+          <option value="510300">300ETF</option>
+          <option value="588000">科创50ETF</option>
+          <option value="510500">500ETF</option>
+        </select>
+        <button id="option-load">查询</button>
+      </div>
+      <div id="options-content"><div class="empty">加载中...</div></div>
+    </section>
+  </div>
 </main>
 <footer>
-  数据来自通达信、腾讯财经、东方财富、新浪等公开接口，仅供学习研究，不构成任何投资建议。
+  数据来自通达信、腾讯财经、东方财富、新浪、巨潮等公开接口，仅供学习研究，不构成任何投资建议。
 </footer>
 <script src="/app.js"></script>
 </body>

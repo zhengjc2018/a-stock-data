@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory
 
+import astock_data as ad
 import datahub
+import extra_data as ex
 import gap_model
 import gap_pick
 
@@ -16,6 +19,22 @@ app = Flask(__name__, static_folder="frontend", static_url_path="")
 _OVERVIEW_CACHE = {"ts": 0.0, "data": None, "err": None}
 _OVERVIEW_LOCK = threading.Lock()
 _OVERVIEW_TTL = 30
+_CACHE = {}
+_CACHE_LOCK = threading.Lock()
+
+
+def cached(key, ttl, fn):
+    with _CACHE_LOCK:
+        hit = _CACHE.get(key)
+        if hit and time.time() - hit[0] < ttl:
+            return hit[1]
+    try:
+        val = fn()
+    except Exception as e:
+        val = {"error": str(e)}
+    with _CACHE_LOCK:
+        _CACHE[key] = (time.time(), val)
+    return val
 
 
 def _overview():
@@ -86,6 +105,118 @@ def api_gap():
 def api_gap_refresh():
     started = gap_pick.trigger_refresh()
     return jsonify({"started": started, "computing": gap_pick.is_computing()})
+
+
+@app.route("/api/pools")
+def api_pools():
+    def load():
+        date = ad.cn_today()
+        return {
+            "date": date,
+            "zt": ad.em_zt_pool(date),
+            "zb": ad.em_zb_pool(date),
+            "dt": ad.em_dt_pool(date),
+            "yzt": ad.em_yzt_pool(date),
+            "monitor": ex.em_stock_monitor(),
+            "anomaly": ex.em_price_anomaly(100),
+        }
+    return jsonify(cached("pools", 120, load))
+
+
+@app.route("/api/board_flow")
+def api_board_flow():
+    board_type = request.args.get("type", "industry")
+    period = request.args.get("period", "today")
+    try:
+        top = min(int(request.args.get("top", "10")), 20)
+    except ValueError:
+        top = 10
+    return jsonify(cached(
+        f"bf:{board_type}:{period}:{top}", 120,
+        lambda: ad.board_fund_flow(board_type, period, top),
+    ))
+
+
+@app.route("/api/hot")
+def api_hot():
+    def load():
+        return {
+            "ths": ad.ths_hot_list(),
+            "em_rank": ad.em_hot_rank(20),
+            "telegraph": ad.cls_telegraph(30),
+            "global": ad.eastmoney_global_news(20),
+        }
+    return jsonify(cached("hot", 120, load))
+
+
+@app.route("/api/lhb")
+def api_lhb():
+    trade_date = request.args.get("date") or ex.cn_today_iso()
+    return jsonify(cached(f"lhb:{trade_date}", 300,
+                          lambda: ex.daily_dragon_tiger(trade_date)))
+
+
+@app.route("/api/stock/<code>")
+def api_stock(code):
+    code = ex.norm_code(code)
+    key = f"stock:{code}"
+
+    def load():
+        def safe(fn, default):
+            try:
+                return fn() or default
+            except Exception:
+                return default
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            f_quote = pool.submit(lambda: safe(lambda: ad.tencent_quote([code]).get(code), {}))
+            f_info = pool.submit(lambda: safe(lambda: ex.eastmoney_stock_info(code), {}))
+            f_eps = pool.submit(lambda: safe(lambda: ex.ths_eps_forecast(code), []))
+            f_fin = pool.submit(lambda: safe(lambda: ex.sina_financial_report(code, "lrb", 4), []))
+            f_ann = pool.submit(lambda: safe(lambda: ex.cninfo_announcements(code, 10), []))
+            f_extra = pool.submit(lambda: safe(lambda: ad.stock_extra(code), {}))
+        return {
+            "code": code,
+            "quote": f_quote.result(),
+            "info": f_info.result(),
+            "eps": f_eps.result(),
+            "finance": f_fin.result(),
+            "announcements": f_ann.result(),
+            "extra": f_extra.result(),
+        }
+    return jsonify(cached(key, 600, load))
+
+
+@app.route("/api/options")
+def api_options():
+    etf = request.args.get("etf", "510050")
+    key = f"opt:{etf}"
+
+    def load():
+        calls = ex.sina_option_codes(etf, True)
+        puts = ex.sina_option_codes(etf, False)
+        months = list(calls)
+        if not months:
+            return {"etf": etf, "month": "", "rows": []}
+        month = months[0]
+        call_codes = calls[month]
+        put_codes = puts.get(month, [])
+        n = 5
+        start = max(0, len(call_codes) // 2 - n // 2)
+        rows = []
+        for i in range(start, min(start + n, len(call_codes))):
+            cc = call_codes[i]
+            pp = put_codes[i] if i < len(put_codes) else ""
+            cq = ex.sina_option_tquote(cc)
+            cg = ex.sina_option_greeks(cc)
+            pq = ex.sina_option_tquote(pp) if pp else {}
+            pg = ex.sina_option_greeks(pp) if pp else {}
+            rows.append({
+                "strike": cq.get("strike") or pq.get("strike"),
+                "call": {**cq, **cg},
+                "put": {**pq, **pg},
+            })
+        return {"etf": etf, "month": month, "rows": rows}
+    return jsonify(cached(key, 600, load))
 
 
 def start_background():

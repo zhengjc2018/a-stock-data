@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.astockdata.daily</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/jojo/code/a-stock-data/app/.venv/bin/python</string>
+        <string>/Users/jojo/code/a-stock-data/app/daily_loop.py</string>
+        <string>--auto</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/jojo/code/a-stock-data/app</string>
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict>
+            <key>Hour</key>
+            <integer>9</integer>
+            <key>Minute</key>
+            <integer>35</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>18</integer>
+            <key>Minute</key>
+            <integer>10</integer>
+        </dict>
+    </array>
+    <key>StandardOutPath</key>
+    <string>/Users/jojo/code/a-stock-data/app/logs/daily_loop.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/jojo/code/a-stock-data/app/logs/daily_loop.err.log</string>
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>

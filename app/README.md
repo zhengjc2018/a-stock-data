@@ -10,6 +10,24 @@
 次日高开排序 v2：GBDT 150 棵树 + isotonic 概率校准，测试集 Top1 命中 41.9%、
 Top3 62.2%、Top10 86.5%（基准 8.1%），模型由 `train_gap_v2.py` 离线训练。
 
+## 自优化闭环
+
+`daily_loop.py` 每天自动运行：
+
+- 18:10 记录当日 Top50 候选到 `outcomes/candidates_*.json`
+- 次日 09:35 用真实开盘价验证高开命中，写入 `outcomes/hits_*.json`
+- 周日 18:10 自动重训，并在模型明显更优时发布（旧模型备份到
+  `gap_model_prev.json`，历史记录写入 `model_history.json`）
+
+macOS 安装定时任务：
+
+```bash
+cp app/com.astockdata.daily.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.astockdata.daily.plist
+```
+
+页面「策略健康」页签展示当前模型指标、近 30 天真实命中率、模型发布历史和每日验证明细。
+
 ## 本地运行
 
 ```bash

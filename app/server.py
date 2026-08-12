@@ -2,6 +2,8 @@
 """A股高开雷达：轻量 Flask 后端 + 单页前端。"""
 from __future__ import annotations
 
+import json
+import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -13,6 +15,7 @@ import datahub
 import extra_data as ex
 import gap_model
 import gap_pick
+import paths as app_paths
 
 app = Flask(__name__, static_folder="frontend", static_url_path="")
 
@@ -219,6 +222,64 @@ def api_options():
             })
         return {"etf": etf, "month": month, "rows": rows}
     return jsonify(cached(key, 600, load))
+
+
+@app.route("/api/strategy_health")
+def api_strategy_health():
+    out_dir = app_paths.bundle_path("outcomes")
+    history = []
+    history_path = app_paths.bundle_path("model_history.json")
+    if os.path.isfile(history_path):
+        try:
+            with open(history_path, encoding="utf-8") as f:
+                history = json.load(f)
+        except Exception:
+            history = []
+    days = []
+    if os.path.isdir(out_dir):
+        for name in sorted(os.listdir(out_dir)):
+            if not name.startswith("hits_") or not name.endswith(".json"):
+                continue
+            date = name.replace("hits_", "").replace(".json", "")
+            try:
+                with open(os.path.join(out_dir, name), encoding="utf-8") as f:
+                    hits = json.load(f)
+            except Exception:
+                continue
+            results = hits.get("results", [])
+            if not results:
+                continue
+            hit = [1 if r.get("hit") else 0 for r in results]
+            def topk(k):
+                return 1 if any(hit[:k]) else 0
+            days.append({
+                "date": date,
+                "total": len(results),
+                "hits": sum(hit),
+                "top1": topk(1),
+                "top3": topk(3),
+                "top10": topk(10),
+            })
+    last_days = days[-30:]
+    def avg(key):
+        vals = [d[key] for d in last_days]
+        return round(sum(vals) / len(vals), 4) if vals else None
+    total_results = sum(d["total"] for d in last_days)
+    total_hits = sum(d["hits"] for d in last_days)
+    return jsonify({
+        "model": gap_model.meta(),
+        "history": history[-20:],
+        "stats": {
+            "verified_days": len(days),
+            "recent_days": len(last_days),
+            "total_results": total_results,
+            "base_rate": round(total_hits / total_results, 4) if total_results else None,
+            "top1_rate": avg("top1"),
+            "top3_rate": avg("top3"),
+            "top10_rate": avg("top10"),
+            "recent": last_days[-10:],
+        },
+    })
 
 
 def start_background():

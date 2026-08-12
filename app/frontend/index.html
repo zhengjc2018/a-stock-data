@@ -102,6 +102,7 @@
     <button class="tab" data-view="gap">次日高开</button>
     <button class="tab" data-view="stock">个股雷达</button>
     <button class="tab" data-view="options">ETF期权</button>
+    <button class="tab" data-view="health">策略健康</button>
   </nav>
 </header>
 <main>
@@ -201,6 +202,17 @@
         <button id="option-load">查询</button>
       </div>
       <div id="options-content"><div class="empty">加载中...</div></div>
+    </section>
+  </div>
+
+  <div id="view-health" class="view">
+    <section>
+      <h2>策略健康 <small id="health-meta"></small></h2>
+      <div id="health-summary"></div>
+      <h2 style="margin-top:22px">模型历史</h2>
+      <div id="health-history"><div class="empty">加载中...</div></div>
+      <h2 style="margin-top:22px">近10日验证</h2>
+      <div id="health-days"><div class="empty">加载中...</div></div>
     </section>
   </div>
 </main>

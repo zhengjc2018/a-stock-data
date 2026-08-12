@@ -57,7 +57,7 @@ SNAPSHOT_MAX_PAGES = 60
 HISTORY_BARS = 150
 MIN_HISTORY_BARS = 65
 CACHE_TTL = 600
-TOP_N = 10
+TOP_N = 50
 
 _GAP_CACHE = {"ts": 0, "data": None, "computing": False, "last_err": None}
 _GAP_LOCK = threading.Lock()

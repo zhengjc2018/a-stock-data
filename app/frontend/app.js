@@ -287,6 +287,7 @@ function renderGap(payload) {
   const mm = (payload.model && payload.model.metrics) || {};
   const top10 = mm.test_top10 ? `测试Top10命中 ${(mm.test_top10 * 100).toFixed(1)}%` : "";
   meta.textContent = `${data.date} · 仅主板 · GBDT校准 · ${ranking} · 候选 ${data.total} 只 · ${top10} · 耗时 ${data.elapsed_sec}s`;
+  const top = data.candidates.slice(0, 10);
   box.innerHTML = table([
     { key: "rank", label: "#", align: "left", raw: true, format: (v, r) => `<b>${r._i + 1}</b>` },
     { key: "code", label: "代码", align: "left" },
@@ -296,7 +297,7 @@ function renderGap(payload) {
     { key: "change_pct", label: "今日", format: (v) => signed(v) + "%", cls: (v) => cls(v) },
     { key: "prob", label: "高开概率", format: (v) => (v === null || v === undefined || Number.isNaN(v) ? "--" : (v * 100).toFixed(1) + "%") },
     { key: "reason", label: "入选理由", align: "left" },
-  ], data.candidates.map((c, i) => ({ ...c, _i: i })));
+  ], top.map((c, i) => ({ ...c, _i: i })));
 }
 
 async function loadGap(force) {
@@ -408,6 +409,46 @@ async function loadOptions() {
   }
 }
 
+async function loadStrategyHealth() {
+  const box = $("health-summary");
+  const histBox = $("health-history");
+  const dayBox = $("health-days");
+  box.innerHTML = '<div class="empty">加载中...</div>';
+  try {
+    const d = await (await fetch("/api/strategy_health")).json();
+    const m = d.model || {};
+    const s = d.stats || {};
+    $("health-meta").textContent = `已验证 ${s.verified_days || 0} 天 · 近30天Top10 ${s.top10_rate ? (s.top10_rate * 100).toFixed(1) + "%" : "--"}`;
+    const cards = [
+      ["当前模型", (m.type || "--").toUpperCase()],
+      ["测试AUC", m.metrics && m.metrics.test_auc ? m.metrics.test_auc : "--"],
+      ["测试Top10", m.metrics && m.metrics.test_top10 ? (m.metrics.test_top10 * 100).toFixed(1) + "%" : "--"],
+      ["已验证天数", s.verified_days || 0],
+      ["近30天Top10", s.top10_rate ? (s.top10_rate * 100).toFixed(1) + "%" : "--"],
+      ["真实高开基准", s.base_rate ? (s.base_rate * 100).toFixed(1) + "%" : "--"],
+    ];
+    box.innerHTML = `<div class="summary-grid">${cards.map(([k, v]) =>
+      `<div class="summary"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>`).join("")}</div>`;
+    histBox.innerHTML = table([
+      { key: "ts", label: "时间", align: "left" },
+      { key: "action", label: "动作" },
+      { key: "reason", label: "原因", align: "left" },
+      { key: "top10", label: "Top10", format: (v, r) => r.metrics && r.metrics.test_top10 ? (r.metrics.test_top10 * 100).toFixed(1) + "%" : "--" },
+      { key: "auc", label: "AUC", format: (v, r) => r.metrics && r.metrics.test_auc ? r.metrics.test_auc : "--" },
+    ], (d.history || []).map((h) => ({ ...h, top10: h.metrics && h.metrics.test_top10, auc: h.metrics && h.metrics.test_auc })));
+    dayBox.innerHTML = table([
+      { key: "date", label: "日期", align: "left" },
+      { key: "total", label: "候选数" },
+      { key: "hits", label: "命中" },
+      { key: "top1", label: "Top1" },
+      { key: "top3", label: "Top3" },
+      { key: "top10", label: "Top10" },
+    ], (s.recent || []).map((r) => ({ ...r, top1: r.top1 ? "是" : "-", top3: r.top3 ? "是" : "-", top10: r.top10 ? "是" : "-" })));
+  } catch (e) {
+    box.innerHTML = '<div class="empty">加载失败</div>';
+  }
+}
+
 const VIEW_LOADERS = {
   overview: loadOverview,
   pools: loadPools,
@@ -417,6 +458,7 @@ const VIEW_LOADERS = {
   gap: loadGap,
   stock: loadStock,
   options: loadOptions,
+  health: loadStrategyHealth,
 };
 
 const LOADED = {};

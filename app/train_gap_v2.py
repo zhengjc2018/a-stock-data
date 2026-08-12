@@ -192,6 +192,39 @@ def split_by_date(df, train_frac=0.7, val_frac=0.15):
     return train, val, test
 
 
+def load_outcomes(out_dir):
+    """读取 outcomes/candidates_*.json + hits_*.json，拼成训练样本。"""
+    import glob
+
+    rows = []
+    for cand_path in sorted(glob.glob(os.path.join(out_dir, "candidates_*.json"))):
+        date = os.path.basename(cand_path).replace("candidates_", "").replace(".json", "")
+        hit_path = os.path.join(out_dir, f"hits_{date}.json")
+        if not os.path.isfile(hit_path):
+            continue
+        try:
+            cand = json.load(open(cand_path, encoding="utf-8"))
+            hits = json.load(open(hit_path, encoding="utf-8"))
+        except Exception:
+            continue
+        hit_map = {h["code"]: h for h in hits.get("results", [])}
+        for c in cand.get("candidates", []):
+            h = hit_map.get(c.get("code"))
+            if not h or c.get("date") != date:
+                continue
+            feats = {k: c.get(k) for k in MODEL_FEATURES}
+            if any(v is None for v in feats.values()):
+                continue
+            rows.append({
+                "date": date,
+                "code": c.get("code"),
+                "industry": c.get("industry", ""),
+                **feats,
+                "label": 1 if h.get("hit") else 0,
+            })
+    return rows
+
+
 def export_gbdt(model, calib, features, metrics, start, end, n_samples):
     trees = []
     for est in model.estimators_[:, 0]:
@@ -231,6 +264,8 @@ def main():
     ap.add_argument("--end", default=time.strftime("%Y-%m-%d"))
     ap.add_argument("--out", default="gap_model_v2.json")
     ap.add_argument("--no-zt-heat", action="store_true")
+    ap.add_argument("--outcomes-dir", type=str, default=None,
+                    help="追加已验证的真实候选样本（outcomes 目录）")
     args = ap.parse_args()
 
     if args.codes:
@@ -245,6 +280,16 @@ def main():
         return
     df = pd.DataFrame(rows)
     print(f"[train] raw samples {len(df)} valid_stocks {n_valid}", flush=True)
+
+    if args.outcomes_dir:
+        added = load_outcomes(args.outcomes_dir)
+        if added:
+            extra = pd.DataFrame(added)
+            keep_cols = ["date", "code", "industry"] + MODEL_FEATURES + ["label"]
+            extra = extra[keep_cols]
+            df = pd.concat([df, extra], ignore_index=True)
+            df = df.drop_duplicates(subset=["date", "code"], keep="first")
+            print(f"[train] outcomes appended {len(added)} -> {len(df)}", flush=True)
 
     if not args.no_zt_heat:
         heat = load_zt_heat(df["date"].unique())

@@ -101,6 +101,18 @@ def _params_for(code):
     return dict(t_strategy.DEFAULT_PARAMS), None
 
 
+def _resolve_params(code):
+    params, doc = _params_for(code)
+    source = "default"
+    if doc and doc.get("improved"):
+        test = doc.get("test", {}).get("combined", {}) or {}
+        default = doc.get("test_default", {}).get("combined", {}) or {}
+        if ((test.get("win_rate") or 0) > (default.get("win_rate") or 0) + 0.02 and
+                (test.get("signals") or 0) >= 20):
+            source = "optimized"
+    return params, source
+
+
 def _run_analysis(h):
     try:
         code = h["code"]
@@ -117,6 +129,9 @@ def _run_analysis(h):
         if payload is None:
             raise RuntimeError("数据不足，无法分析")
         analysis = {"status": "done", **payload}
+        params, source = _resolve_params(code)
+        analysis["params_used"] = params
+        analysis["params_source"] = source
     except Exception as e:
         analysis = {"status": "error", "error": str(e)}
     state = load_state()
@@ -131,6 +146,11 @@ def ensure_analysis(state=None):
     state = state or load_state()
     for h in state["holdings"]:
         analysis = h.get("analysis") or {}
+        if analysis.get("status") == "done" and "params_source" not in analysis:
+            params, source = _resolve_params(h["code"])
+            analysis["params_used"] = params
+            analysis["params_source"] = source
+            continue
         if analysis.get("status") in ("done", "analyzing"):
             continue
         h["analysis"] = {"status": "analyzing"}
@@ -155,7 +175,7 @@ def _compute_signal(code, name, cost, qty):
         df["idx_close"] = df["dt"].map(idx_map)
         df["idx_trend"] = (df["idx_close"] > df["idx_close"].shift(3)).fillna(False)
     df = df.dropna(subset=["prev_close", "first_vol_ratio", "idx_close"]).reset_index(drop=True)
-    params, profile = _params_for(code)
+    params, _ = _resolve_params(code)
     buy_idx, sell_idx = t_strategy.signal_indices(df, params)
     last = df.iloc[-1]["dt"]
     signal = None

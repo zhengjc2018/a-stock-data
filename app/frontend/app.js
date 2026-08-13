@@ -560,6 +560,7 @@ async function loadTState() {
           <br>VWAP偏离 ${(p.vwap_dev_avg * 100).toFixed(2)}% · 量能比 ${fmt(p.vol_ratio_5_20)}
           <br>参数 止盈/止损 ${(a.params && a.params.target * 100).toFixed(1)}% · RSI ${a.params && a.params.rsi_low}/${a.params && a.params.rsi_high} · 评分≥${a.params && a.params.score}
           <br>验证胜率 ${test.win_rate ? (test.win_rate * 100).toFixed(1) + "%" : "--"} · ${a.improved ? "优于默认" : "使用默认参数"}
+          <br>做T逻辑：VWAP+RSI+BOLL+量能+资金流+大盘共振 · <b>${a.params_source === "optimized" ? "已应用优化参数" : "已应用默认参数"}</b>
         </div>
       </div>`;
     });

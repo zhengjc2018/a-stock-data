@@ -1,0 +1,77 @@
+{
+  "date": "2026-08-12",
+  "market_date": "2026-08-13",
+  "verified_at": "2026-08-13 21:35:57",
+  "results": [
+    {
+      "code": "002825",
+      "name": "纳尔股份",
+      "open": 9.41,
+      "pct": 0.0,
+      "hit": false
+    },
+    {
+      "code": "603283",
+      "name": "赛腾股份",
+      "open": 47.2,
+      "pct": 1.64,
+      "hit": true
+    },
+    {
+      "code": "603790",
+      "name": "雅运股份",
+      "open": 25.04,
+      "pct": 0.0,
+      "hit": false
+    },
+    {
+      "code": "002768",
+      "name": "国恩股份",
+      "open": 60.63,
+      "pct": -0.03,
+      "hit": false
+    },
+    {
+      "code": "002246",
+      "name": "北化股份",
+      "open": 22.08,
+      "pct": 0.09,
+      "hit": false
+    },
+    {
+      "code": "001378",
+      "name": "德冠新材",
+      "open": 21.53,
+      "pct": 0.05,
+      "hit": false
+    },
+    {
+      "code": "000537",
+      "name": "绿发电力",
+      "open": 8.46,
+      "pct": -0.82,
+      "hit": false
+    },
+    {
+      "code": "605128",
+      "name": "上海沿浦",
+      "open": 26.0,
+      "pct": -0.27,
+      "hit": false
+    },
+    {
+      "code": "002969",
+      "name": "嘉美包装",
+      "open": 14.8,
+      "pct": -0.2,
+      "hit": false
+    },
+    {
+      "code": "002580",
+      "name": "圣阳股份",
+      "open": 21.23,
+      "pct": 0.0,
+      "hit": false
+    }
+  ]
+}

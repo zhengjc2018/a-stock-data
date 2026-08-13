@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.astockdata.server</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/jojo/code/a-stock-data/app/.venv/bin/python</string>
+        <string>/Users/jojo/code/a-stock-data/app/server.py</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/jojo/code/a-stock-data/app</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>APANEL_PORT</key>
+        <string>5050</string>
+        <key>APANEL_HOST</key>
+        <string>127.0.0.1</string>
+    </dict>
+    <key>KeepAlive</key>
+    <true/>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/jojo/code/a-stock-data/app/logs/server.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/jojo/code/a-stock-data/app/logs/server.err.log</string>
+</dict>
+</plist>

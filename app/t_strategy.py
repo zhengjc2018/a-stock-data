@@ -16,8 +16,13 @@ import time
 import numpy as np
 import pandas as pd
 import requests
+import threading
 
 from astock_data import UA, em_get
+
+_KLINE_CACHE = {}
+_FUND_CACHE = {}
+_CACHE_LOCK = threading.Lock()
 
 DEFAULT_PARAMS = {
     "target": 0.005,
@@ -41,6 +46,11 @@ STOCKS = [
 
 
 def fetch_kline(symbol, scale, datalen):
+    key = (symbol, scale)
+    with _CACHE_LOCK:
+        hit = _KLINE_CACHE.get(key)
+        if hit and time.time() - hit[0] < 120:
+            return hit[1].copy()
     url = "https://quotes.sina.cn/cn/api/jsonp_v2.php/var%20_data=/CN_MarketDataService.getKLineData"
     r = requests.get(url, params={"symbol": symbol, "scale": str(scale), "ma": "no",
                                   "datalen": str(datalen)},
@@ -62,10 +72,17 @@ def fetch_kline(symbol, scale, datalen):
             "close": float(it["close"]),
             "volume": float(it.get("volume") or 0),
         })
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    with _CACHE_LOCK:
+        _KLINE_CACHE[key] = (time.time(), df.copy())
+    return df
 
 
 def fetch_fund_flow(secid):
+    with _CACHE_LOCK:
+        hit = _FUND_CACHE.get(secid)
+        if hit and time.time() - hit[0] < 3600:
+            return hit[1]
     out = {}
     params = {
         "secid": secid,
@@ -76,19 +93,20 @@ def fetch_fund_flow(secid):
     headers = {"User-Agent": UA, "Referer": "https://quote.eastmoney.com/"}
     for host in ("https://push2his.eastmoney.com", "http://push2his.eastmoney.com",
                  "https://push2delay.eastmoney.com"):
-        for _ in range(2):
-            try:
-                r = em_get(f"{host}/api/qt/stock/fflow/daykline/get",
-                           params=params, headers=headers, timeout=12)
-                d = r.json() or {}
-                for line in (d.get("data") or {}).get("klines", []) or []:
-                    parts = line.split(",")
-                    if len(parts) >= 2:
-                        out[parts[0]] = float(parts[1]) if parts[1] != "-" else 0.0
-                if out:
-                    return out
-            except Exception:
-                time.sleep(0.5)
+        try:
+            r = em_get(f"{host}/api/qt/stock/fflow/daykline/get",
+                       params=params, headers=headers, timeout=6)
+            d = r.json() or {}
+            for line in (d.get("data") or {}).get("klines", []) or []:
+                parts = line.split(",")
+                if len(parts) >= 2:
+                    out[parts[0]] = float(parts[1]) if parts[1] != "-" else 0.0
+            if out:
+                break
+        except Exception:
+            continue
+    with _CACHE_LOCK:
+        _FUND_CACHE[secid] = (time.time(), out)
     return out
 
 
@@ -264,7 +282,7 @@ def profile_stock(daily, intraday):
 
 def quick_profile(code, symbol, secid):
     """只算趋势画像，不跑参数优化，用于页面快速展示。"""
-    intraday = fetch_kline(symbol, 5, 300)
+    intraday = fetch_kline(symbol, 5, 1023)
     daily = fetch_kline(symbol, 240, 120)
     if intraday.empty or daily.empty or len(intraday) < 60:
         return None

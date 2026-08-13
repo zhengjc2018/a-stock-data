@@ -276,6 +276,12 @@ function renderGap(payload) {
     box.innerHTML = `<div class="empty">计算失败：${esc(payload.last_err)}<br><button style="margin-top:12px" onclick="loadGap(true)">重新计算</button></div>`;
     return;
   }
+  if (!data) {
+    setStatus("未计算", "");
+    meta.textContent = "尚未计算";
+    box.innerHTML = '<div class="empty">点击「立即计算」开始全市场选股</div>';
+    return;
+  }
   if (!data || !data.candidates || !data.candidates.length) {
     setStatus("暂无推荐", "err");
     meta.textContent = data ? `扫描完成，无候选（${data.date}）` : "暂无数据";
@@ -540,6 +546,7 @@ $("stock-load").addEventListener("click", loadStock);
 $("stock-code").addEventListener("keydown", (e) => { if (e.key === "Enter") loadStock(); });
 $("option-load").addEventListener("click", loadOptions);
 $("retrain-btn").addEventListener("click", triggerRetrain);
+$("gap-run").addEventListener("click", () => loadGap(true));
 
 loadOverview();
 loadGap();

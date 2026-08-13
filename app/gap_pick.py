@@ -587,7 +587,7 @@ def trigger_refresh(scope=None) -> bool:
     return True
 
 
-def get_cache(scope=None):
+def get_cache(scope=None, trigger=True):
     key = _scope_key(scope)
     with _GAP_LOCK:
         data = _GAP_CACHE["data"]
@@ -595,7 +595,7 @@ def get_cache(scope=None):
         computing = _GAP_CACHE["computing"]
     if data and data.get("scope_key") == key and time.time() - ts < CACHE_TTL:
         return data
-    if not computing:
+    if not computing and trigger:
         trigger_refresh(scope)
     return data if data and data.get("scope_key") == key else None
 

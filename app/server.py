@@ -103,7 +103,7 @@ def api_overview():
 
 @app.route("/api/gap")
 def api_gap():
-    data = gap_pick.get_cache(GAP_SCOPE)
+    data = gap_pick.get_cache(GAP_SCOPE, trigger=False)
     return jsonify({
         "data": data,
         "computing": gap_pick.is_computing(),
@@ -324,10 +324,6 @@ def start_background():
             get_overview()
         except Exception:
             pass
-        try:
-            gap_pick.trigger_refresh(GAP_SCOPE)
-        except Exception as e:
-            print(f"[background] gap warm err: {e}", flush=True)
 
     threading.Thread(target=_warm, daemon=True).start()
 

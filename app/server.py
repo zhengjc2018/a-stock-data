@@ -372,6 +372,11 @@ def start_background():
             do_t.ensure_analysis()
         except Exception:
             pass
+        try:
+            if do_t.load_state().get("monitoring"):
+                do_t.start()
+        except Exception:
+            pass
 
     threading.Thread(target=_warm, daemon=True).start()
 

@@ -36,6 +36,10 @@ launchctl load ~/Library/LaunchAgents/com.astockdata.server.plist
 
 服务由 launchd 保活，关闭终端后仍会运行，崩溃会自动重启。
 
+做T监控说明：App/网页进程活着时每 1 分钟跑一轮；服务/App 重启后会自动恢复
+“已启动监控”状态。Android 上如果进程被系统杀掉或强制停止，需要重新打开 App；
+真正的全天后台定时需要额外的 Android 前台服务/WorkManager。
+
 页面「策略健康」页签展示当前模型指标、近 30 天真实命中率、模型发布历史和每日验证明细。
 
 次日高开推荐默认不自动计算：页面刷新不会触发扫描，需要点击「立即计算」手动运行；

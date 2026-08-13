@@ -9,6 +9,8 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 
+import requests
+
 import datahub
 import paths
 import t_strategy
@@ -287,3 +289,37 @@ def delete_holding(hid):
     state["holdings"] = [h for h in state["holdings"] if h.get("id") != hid]
     save_state(state)
     return state
+
+
+def search_stocks(q, limit=10):
+    q = str(q or "").strip()
+    if not q:
+        return []
+    try:
+        r = requests.get("https://smartbox.gtimg.cn/s3/",
+                         params={"v": "2", "q": q, "t": "all"}, timeout=8)
+        r.encoding = "gbk"
+        text = r.text
+    except Exception:
+        return []
+    if '"' not in text:
+        return []
+
+    def _u(s):
+        try:
+            return s.encode("utf-8").decode("unicode_escape")
+        except Exception:
+            return s
+
+    out = []
+    for item in text.split('"')[1].split("^"):
+        parts = item.split("~")
+        if len(parts) >= 5 and parts[4] in ("GP-A", "GP-B", "GP"):
+            out.append({
+                "code": parts[1],
+                "name": _u(parts[2]),
+                "market": parts[0].upper(),
+            })
+            if len(out) >= limit:
+                break
+    return out

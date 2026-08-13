@@ -58,6 +58,9 @@
   .sub-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
   .sub-tab{padding:5px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--sub);font-size:12px;cursor:pointer}
   .sub-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .suggest-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .suggest-item{padding:5px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);font-size:12px;cursor:pointer}
+  .suggest-item:hover{border-color:var(--accent);color:var(--accent)}
   .empty{padding:28px 16px;text-align:center;color:var(--sub);background:var(--panel);border:1px dashed var(--line);border-radius:8px;font-size:13px}
   .logic{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:12px;color:#475569;line-height:1.9}
   .logic b{color:var(--text)}
@@ -191,6 +194,7 @@
         <button id="t-stop">停止监控</button>
         <button id="t-check">手动检查</button>
       </div>
+      <div id="t-suggest"></div>
       <div id="t-holdings"></div>
       <h2 style="margin-top:22px">特征分析</h2>
       <div id="t-analysis"></div>

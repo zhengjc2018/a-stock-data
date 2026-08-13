@@ -356,6 +356,11 @@ def api_t_check():
     return jsonify(do_t.check_once())
 
 
+@app.route("/api/search")
+def api_search():
+    return jsonify(do_t.search_stocks(request.args.get("q", "")))
+
+
 def start_background():
     def _warm():
         time.sleep(1)

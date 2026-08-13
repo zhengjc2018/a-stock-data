@@ -2,3 +2,58 @@
  * Running on http://127.0.0.1:5050
 [33mPress CTRL+C to quit[0m
 127.0.0.1 - - [13/Aug/2026 23:02:03] "GET /api/health HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:02:13] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:03:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:04:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:05:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:06:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:07:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:08:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:09:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:10:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:11:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:12:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:13:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:14:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:15:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:16:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:17:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:18:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:19:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:20:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:21:07] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:21:36] "[36mGET / HTTP/1.1[0m" 304 -
+127.0.0.1 - - [13/Aug/2026 23:21:36] "GET /app.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:21:36] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:21:36] "GET /api/retrain/status HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:21:36] "GET /api/gap HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:21:38] "GET /api/gap HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:21:39] "GET /api/t/state HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:21:43] "POST /api/t/holdings/delete HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:21:43] "GET /api/t/state HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:22:07] "GET /api/overview HTTP/1.1" 200 -
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5050
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [13/Aug/2026 23:23:22] "GET /api/health HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:23:23] "GET /api/search?q=600519 HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:23:32] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:23:32] "GET /app.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:23:32] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:23:32] "GET /api/retrain/status HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:23:32] "GET /api/gap HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:23:36] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:23:46] "GET /api/t/state HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:23:56] "GET /api/search?q=600519 HTTP/1.1" 200 -
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5050
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [13/Aug/2026 23:24:37] "GET /api/search?q=茅台 HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:24:44] "[36mGET / HTTP/1.1[0m" 304 -
+127.0.0.1 - - [13/Aug/2026 23:24:44] "[36mGET /app.js HTTP/1.1[0m" 304 -
+127.0.0.1 - - [13/Aug/2026 23:24:44] "GET /api/overview HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:24:44] "GET /api/retrain/status HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:24:44] "GET /api/gap HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:24:58] "GET /api/t/state HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:25:08] "GET /api/search?q=600519 HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 23:25:41] "GET /api/overview HTTP/1.1" 200 -

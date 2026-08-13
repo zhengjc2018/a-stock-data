@@ -617,6 +617,30 @@ const VIEW_LOADERS = {
 };
 
 const LOADED = {};
+let searchTimer = null;
+
+async function searchStocks() {
+  const q = $("t-code").value.trim() || $("t-name").value.trim();
+  if (!q) {
+    $("t-suggest").innerHTML = "";
+    return;
+  }
+  try {
+    const list = await (await fetch(`/api/search?q=${encodeURIComponent(q)}`)).json();
+    $("t-suggest").innerHTML = list.length
+      ? `<div class="suggest-list">${list.map((s) =>
+          `<button class="suggest-item" data-code="${esc(s.code)}" data-name="${esc(s.name)}">${esc(s.code)} ${esc(s.name)}</button>`).join("")}</div>`
+      : "";
+    $("t-suggest").querySelectorAll(".suggest-item").forEach((b) =>
+      b.addEventListener("click", () => {
+        $("t-code").value = b.dataset.code;
+        $("t-name").value = b.dataset.name;
+        $("t-suggest").innerHTML = "";
+      }));
+  } catch (e) {
+    $("t-suggest").innerHTML = "";
+  }
+}
 
 function switchView(name, force) {
   document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
@@ -653,6 +677,8 @@ $("t-add").addEventListener("click", () => postT("/api/t/holdings", {
 $("t-start").addEventListener("click", () => postT("/api/t/start"));
 $("t-stop").addEventListener("click", () => postT("/api/t/stop"));
 $("t-check").addEventListener("click", () => postT("/api/t/check"));
+$("t-code").addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(searchStocks, 250); });
+$("t-name").addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(searchStocks, 250); });
 
 loadOverview();
 loadGap();

@@ -260,6 +260,17 @@ def profile_stock(daily, intraday):
     }
 
 
+def quick_profile(code, symbol, secid):
+    """只算趋势画像，不跑参数优化，用于页面快速展示。"""
+    intraday = fetch_kline(symbol, 5, 300)
+    daily = fetch_kline(symbol, 240, 120)
+    if intraday.empty or daily.empty or len(intraday) < 60:
+        return None
+    df = add_signals_features(intraday, {})
+    df["main_net_prev"] = df["main_net_prev"].fillna(0)
+    return profile_stock(daily, df)
+
+
 def optimize_code(code, symbol, secid, out_dir):
     intraday = fetch_kline(symbol, 5, 1023)
     daily = fetch_kline(symbol, 240, 120)

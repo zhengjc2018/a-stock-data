@@ -103,6 +103,14 @@ def _run_analysis(h):
     try:
         code = h["code"]
         symbol, secid = _symbol_secid(code)
+        profile = t_strategy.quick_profile(code, symbol, secid)
+        if profile:
+            state = load_state()
+            for item in state["holdings"]:
+                if item.get("id") == h.get("id"):
+                    item["analysis"] = {"status": "profile", "profile": profile}
+                    break
+            save_state(state)
         payload = t_strategy.optimize_code(code, symbol, secid, T_PARAMS_DIR)
         if payload is None:
             raise RuntimeError("数据不足，无法分析")

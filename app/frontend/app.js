@@ -534,6 +534,17 @@ async function loadTState() {
       if (a.status === "analyzing") {
         return `<div class="summary"><div class="k">${esc(h.code)} ${esc(h.name)}</div><div class="v" style="font-size:13px">特征分析中...</div></div>`;
       }
+      if (a.status === "profile" && a.profile) {
+        const p = a.profile;
+        return `<div class="summary">
+          <div class="k">${esc(h.code)} ${esc(h.name)} · ${esc(p.trend)} · ${esc(p.volatility)}</div>
+          <div style="font-size:12px;line-height:1.8;margin-top:4px">
+            20日收益 ${(p.ret_20 * 100).toFixed(1)}% · 日均振幅 ${(p.avg_daily_amp * 100).toFixed(1)}%
+            <br>VWAP偏离 ${(p.vwap_dev_avg * 100).toFixed(2)}% · 量能比 ${fmt(p.vol_ratio_5_20)}
+            <br><span style="color:var(--accent)">参数优化后台进行中...</span>
+          </div>
+        </div>`;
+      }
       if (a.status === "error") {
         return `<div class="summary"><div class="k">${esc(h.code)} ${esc(h.name)}</div><div class="v" style="font-size:12px;color:var(--up)">${esc(a.error || "分析失败")}</div></div>`;
       }

@@ -529,6 +529,32 @@ async function loadTState() {
         });
         loadTState();
       }));
+    const analysisCards = (d.holdings || []).map((h) => {
+      const a = h.analysis || {};
+      if (a.status === "analyzing") {
+        return `<div class="summary"><div class="k">${esc(h.code)} ${esc(h.name)}</div><div class="v" style="font-size:13px">特征分析中...</div></div>`;
+      }
+      if (a.status === "error") {
+        return `<div class="summary"><div class="k">${esc(h.code)} ${esc(h.name)}</div><div class="v" style="font-size:12px;color:var(--up)">${esc(a.error || "分析失败")}</div></div>`;
+      }
+      if (!a.profile) {
+        return `<div class="summary"><div class="k">${esc(h.code)} ${esc(h.name)}</div><div class="v" style="font-size:13px">等待分析</div></div>`;
+      }
+      const p = a.profile;
+      const test = (a.test && a.test.combined) || {};
+      return `<div class="summary">
+        <div class="k">${esc(h.code)} ${esc(h.name)} · ${esc(p.trend)} · ${esc(p.volatility)}</div>
+        <div style="font-size:12px;line-height:1.8;margin-top:4px">
+          20日收益 ${(p.ret_20 * 100).toFixed(1)}% · 日均振幅 ${(p.avg_daily_amp * 100).toFixed(1)}%
+          <br>VWAP偏离 ${(p.vwap_dev_avg * 100).toFixed(2)}% · 量能比 ${fmt(p.vol_ratio_5_20)}
+          <br>参数 止盈/止损 ${(a.params && a.params.target * 100).toFixed(1)}% · RSI ${a.params && a.params.rsi_low}/${a.params && a.params.rsi_high} · 评分≥${a.params && a.params.score}
+          <br>验证胜率 ${test.win_rate ? (test.win_rate * 100).toFixed(1) + "%" : "--"} · ${a.improved ? "优于默认" : "使用默认参数"}
+        </div>
+      </div>`;
+    });
+    $("t-analysis").innerHTML = analysisCards.length
+      ? `<div class="summary-grid">${analysisCards.join("")}</div>`
+      : '<div class="empty">添加持仓后自动分析</div>';
     $("t-signals").innerHTML = table([
       { key: "time", label: "时间", align: "left" },
       { key: "code", label: "代码", align: "left" },

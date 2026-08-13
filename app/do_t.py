@@ -18,6 +18,7 @@ STATE_FILE = paths.data_path("t_holdings.json")
 STATE_LOCK = threading.RLock()
 _MONITOR = {"thread": None, "stop": False, "running": False}
 _CACHE = {"bars": {"ts": 0, "data": {}}, "fund": {"ts": 0, "data": {}}}
+T_PARAMS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "t_params")
 
 DEFAULT_STATE = {
     "holdings": [],
@@ -82,7 +83,7 @@ def _symbol_secid(code):
 
 
 def _params_for(code):
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "t_params", f"t_params_{code}.json")
+    path = os.path.join(T_PARAMS_DIR, f"t_params_{code}.json")
     if os.path.isfile(path):
         try:
             with open(path, encoding="utf-8") as f:
@@ -96,6 +97,35 @@ def _params_for(code):
         except Exception:
             pass
     return dict(t_strategy.DEFAULT_PARAMS), None
+
+
+def _run_analysis(h):
+    try:
+        code = h["code"]
+        symbol, secid = _symbol_secid(code)
+        payload = t_strategy.optimize_code(code, symbol, secid, T_PARAMS_DIR)
+        if payload is None:
+            raise RuntimeError("数据不足，无法分析")
+        analysis = {"status": "done", **payload}
+    except Exception as e:
+        analysis = {"status": "error", "error": str(e)}
+    state = load_state()
+    for item in state["holdings"]:
+        if item.get("id") == h.get("id"):
+            item["analysis"] = analysis
+            break
+    save_state(state)
+
+
+def ensure_analysis(state=None):
+    state = state or load_state()
+    for h in state["holdings"]:
+        analysis = h.get("analysis") or {}
+        if analysis.get("status") in ("done", "analyzing"):
+            continue
+        h["analysis"] = {"status": "analyzing"}
+        threading.Thread(target=_run_analysis, args=(h,), daemon=True).start()
+    save_state(state)
 
 
 def _compute_signal(code, name, cost, qty):
@@ -240,6 +270,7 @@ def add_holding(code, name, cost, qty):
         "qty": int(qty),
     })
     save_state(state)
+    ensure_analysis(state)
     return state
 
 

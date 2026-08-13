@@ -363,6 +363,10 @@ def start_background():
             get_overview()
         except Exception:
             pass
+        try:
+            do_t.ensure_analysis()
+        except Exception:
+            pass
 
     threading.Thread(target=_warm, daemon=True).start()
 

@@ -529,7 +529,6 @@ def dividend_history(code, page_size=20):
 def stock_fund_flow_120d(code):
     code = str(code).zfill(6)
     market_code = 1 if code.startswith("6") else 0
-    url = "https://push2delay.eastmoney.com/api/qt/stock/fflow/daykline/get"
     params = {
         "secid": f"{market_code}.{code}",
         "fields1": "f1,f2,f3,f7",
@@ -541,11 +540,17 @@ def stock_fund_flow_120d(code):
         "Referer": "https://quote.eastmoney.com/",
         "Origin": "https://quote.eastmoney.com",
     }
-    try:
-        d = em_get(url, params=params, headers=headers, timeout=15).json()
-        klines = d.get("data", {}).get("klines", [])
-    except Exception:
-        return []
+    klines = []
+    for host in ("https://push2his.eastmoney.com", "http://push2his.eastmoney.com",
+                 "https://push2delay.eastmoney.com"):
+        try:
+            d = em_get(f"{host}/api/qt/stock/fflow/daykline/get",
+                       params=params, headers=headers, timeout=15).json()
+            klines = d.get("data", {}).get("klines", [])
+        except Exception:
+            continue
+        if klines:
+            break
     rows = []
     for line in klines:
         parts = line.split(",")

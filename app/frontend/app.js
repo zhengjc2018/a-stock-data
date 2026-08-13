@@ -507,6 +507,65 @@ async function triggerRetrain() {
   }
 }
 
+async function loadTState() {
+  try {
+    const d = await (await fetch("/api/t/state")).json();
+    $("t-meta").textContent = `监控${d.monitoring ? "中" : "未启动"} · 自动执行${d.auto_execute ? "开" : "关"} · 上次检查 ${d.last_check || "--"}`;
+    $("t-holdings").innerHTML = table([
+      { key: "code", label: "代码", align: "left" },
+      { key: "name", label: "名称", align: "left" },
+      { key: "cost", label: "成本", format: (v) => fmt(v) },
+      { key: "qty", label: "数量", format: (v) => fmt(v, 0) },
+      { key: "price", label: "现价", format: (v) => fmt(v) },
+      { key: "profit", label: "浮动盈亏", format: (v, r) => r.price ? `${signed((r.price / r.cost - 1) * 100)}%` : "--", cls: (v, r) => r.price && r.cost ? cls(r.price - r.cost) : "" },
+      { key: "op", label: "操作", align: "left", raw: true, format: (v, r) => `<button data-del="${esc(r.id)}">删除</button>` },
+    ], (d.holdings || []).map((h) => ({ ...h, profit: h.price ? (h.price / h.cost - 1) * 100 : null })));
+    $("t-holdings").querySelectorAll("[data-del]").forEach((b) =>
+      b.addEventListener("click", async () => {
+        await fetch("/api/t/holdings/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: b.dataset.del }),
+        });
+        loadTState();
+      }));
+    $("t-signals").innerHTML = table([
+      { key: "time", label: "时间", align: "left" },
+      { key: "code", label: "代码", align: "left" },
+      { key: "name", label: "名称", align: "left" },
+      { key: "side", label: "方向", format: (v) => v === "buy" ? "买入" : "卖出", cls: (v) => v === "buy" ? "up" : "down" },
+      { key: "price", label: "价格", format: (v) => fmt(v) },
+      { key: "reason", label: "原因", align: "left" },
+    ], d.signals || []);
+    $("t-trades").innerHTML = table([
+      { key: "time", label: "时间", align: "left" },
+      { key: "code", label: "代码", align: "left" },
+      { key: "name", label: "名称", align: "left" },
+      { key: "side", label: "方向", format: (v) => v === "buy" ? "买入" : "卖出", cls: (v) => v === "buy" ? "up" : "down" },
+      { key: "price", label: "价格", format: (v) => fmt(v) },
+      { key: "qty", label: "数量", format: (v) => fmt(v, 0) },
+    ], d.trades || []);
+    if (d.monitoring) {
+      setTimeout(loadTState, 5000);
+    }
+  } catch (e) {
+    $("t-holdings").innerHTML = '<div class="empty">加载失败</div>';
+  }
+}
+
+async function postT(url, body) {
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body || {}),
+    });
+    loadTState();
+  } catch (e) {
+    $("t-meta").textContent = "操作失败";
+  }
+}
+
 const VIEW_LOADERS = {
   overview: loadOverview,
   pools: loadPools,
@@ -514,6 +573,7 @@ const VIEW_LOADERS = {
   hot: loadHot,
   lhb: loadLhb,
   gap: loadGap,
+  do_t: loadTState,
   stock: loadStock,
   options: loadOptions,
   health: loadStrategyHealth,
@@ -547,6 +607,15 @@ $("stock-code").addEventListener("keydown", (e) => { if (e.key === "Enter") load
 $("option-load").addEventListener("click", loadOptions);
 $("retrain-btn").addEventListener("click", triggerRetrain);
 $("gap-run").addEventListener("click", () => loadGap(true));
+$("t-add").addEventListener("click", () => postT("/api/t/holdings", {
+  code: $("t-code").value.trim(),
+  name: $("t-name").value.trim(),
+  cost: parseFloat($("t-cost").value || 0),
+  qty: parseInt($("t-qty").value || 0, 10),
+}));
+$("t-start").addEventListener("click", () => postT("/api/t/start"));
+$("t-stop").addEventListener("click", () => postT("/api/t/stop"));
+$("t-check").addEventListener("click", () => postT("/api/t/check"));
 
 loadOverview();
 loadGap();

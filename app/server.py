@@ -12,6 +12,7 @@ from flask import Flask, jsonify, request, send_from_directory
 
 import astock_data as ad
 import datahub
+import do_t
 import extra_data as ex
 import gap_model
 import gap_pick
@@ -315,6 +316,44 @@ def api_retrain():
 @app.route("/api/retrain/status")
 def api_retrain_status():
     return jsonify(_RETRAIN_STATE)
+
+
+@app.route("/api/t/state")
+def api_t_state():
+    return jsonify(do_t.load_state())
+
+
+@app.route("/api/t/holdings", methods=["POST"])
+def api_t_add_holding():
+    body = request.get_json(force=True, silent=True) or {}
+    code = str(body.get("code", "")).zfill(6)
+    if len(code) != 6:
+        return jsonify({"error": "code required"}), 400
+    return jsonify(do_t.add_holding(
+        code, body.get("name"), body.get("cost", 0), body.get("qty", 0)))
+
+
+@app.route("/api/t/holdings/delete", methods=["POST"])
+def api_t_delete_holding():
+    body = request.get_json(force=True, silent=True) or {}
+    return jsonify(do_t.delete_holding(body.get("id", "")))
+
+
+@app.route("/api/t/start", methods=["POST"])
+def api_t_start():
+    do_t.start()
+    return jsonify(do_t.load_state())
+
+
+@app.route("/api/t/stop", methods=["POST"])
+def api_t_stop():
+    do_t.stop()
+    return jsonify(do_t.load_state())
+
+
+@app.route("/api/t/check", methods=["POST"])
+def api_t_check():
+    return jsonify(do_t.check_once())
 
 
 def start_background():

@@ -1,0 +1,70 @@
+{
+  "code": "000001",
+  "profile": {
+    "trend": "震荡",
+    "volatility": "低波动",
+    "ret_20": 0.0446,
+    "avg_daily_amp": 0.0157,
+    "avg_bar_range": 0.0028,
+    "vol_ratio_5_20": 0.551,
+    "vwap_dev_avg": 0.00313,
+    "ma5": 11.25,
+    "ma20": 11.22,
+    "ma60": 10.88
+  },
+  "params": {
+    "target": 0.006,
+    "stop": 0.006,
+    "rsi_low": 38,
+    "rsi_high": 72,
+    "score": 4,
+    "vwap_buy": 0.005,
+    "vwap_sell": 0.005,
+    "vol_shrink": 0.9,
+    "vol_expand": 1.4,
+    "horizon": 12
+  },
+  "train": {
+    "buy": {
+      "signals": 8,
+      "win_rate": 0.5
+    },
+    "sell": {
+      "signals": 14,
+      "win_rate": 0.7143
+    },
+    "combined": {
+      "signals": 22,
+      "win_rate": 0.6364
+    }
+  },
+  "test": {
+    "buy": {
+      "signals": 14,
+      "win_rate": 0.3571
+    },
+    "sell": {
+      "signals": 0,
+      "win_rate": null
+    },
+    "combined": {
+      "signals": 14,
+      "win_rate": 0.3571
+    }
+  },
+  "test_default": {
+    "buy": {
+      "signals": 98,
+      "win_rate": 0.4592
+    },
+    "sell": {
+      "signals": 15,
+      "win_rate": 0.4
+    },
+    "combined": {
+      "signals": 113,
+      "win_rate": 0.4513
+    }
+  },
+  "improved": false
+}

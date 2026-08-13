@@ -1,0 +1,70 @@
+{
+  "code": "603501",
+  "profile": {
+    "trend": "下降趋势",
+    "volatility": "中波动",
+    "ret_20": -0.1805,
+    "avg_daily_amp": 0.0393,
+    "avg_bar_range": 0.00565,
+    "vol_ratio_5_20": 0.837,
+    "vwap_dev_avg": 0.008,
+    "ma5": 90.74,
+    "ma20": 93.48,
+    "ma60": 95.72
+  },
+  "params": {
+    "target": 0.005,
+    "stop": 0.005,
+    "rsi_low": 38,
+    "rsi_high": 72,
+    "score": 3,
+    "vwap_buy": 0.003,
+    "vwap_sell": 0.003,
+    "vol_shrink": 0.9,
+    "vol_expand": 1.4,
+    "horizon": 12
+  },
+  "train": {
+    "buy": {
+      "signals": 111,
+      "win_rate": 0.4054
+    },
+    "sell": {
+      "signals": 23,
+      "win_rate": 0.6087
+    },
+    "combined": {
+      "signals": 134,
+      "win_rate": 0.4403
+    }
+  },
+  "test": {
+    "buy": {
+      "signals": 47,
+      "win_rate": 0.617
+    },
+    "sell": {
+      "signals": 20,
+      "win_rate": 0.65
+    },
+    "combined": {
+      "signals": 67,
+      "win_rate": 0.6269
+    }
+  },
+  "test_default": {
+    "buy": {
+      "signals": 47,
+      "win_rate": 0.617
+    },
+    "sell": {
+      "signals": 23,
+      "win_rate": 0.6087
+    },
+    "combined": {
+      "signals": 70,
+      "win_rate": 0.6143
+    }
+  },
+  "improved": true
+}

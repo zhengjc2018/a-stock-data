@@ -31,6 +31,8 @@ jobs:
             --add-data "frontend;frontend" `
             --add-data "gap_model.json;." `
             --collect-all easy_tdx `
+            --collect-all sklearn `
+            --collect-all scipy `
             exe_launcher.py
 
       - name: Upload EXE artifact

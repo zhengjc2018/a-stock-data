@@ -1,0 +1,14 @@
+[
+  {
+    "ts": "2026-08-13 21:43:55",
+    "action": "reject",
+    "reason": "not better than current model",
+    "metrics": {
+      "base_rate": 0.082,
+      "test_auc": 0.6771,
+      "test_top1": 0.4595,
+      "test_top3": 0.6622,
+      "test_top10": 0.8649
+    }
+  }
+]

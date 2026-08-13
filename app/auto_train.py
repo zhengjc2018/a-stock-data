@@ -9,11 +9,10 @@
 from __future__ import annotations
 
 import hashlib
+import argparse
 import json
 import os
 import shutil
-import subprocess
-import sys
 import time
 
 import paths
@@ -61,26 +60,34 @@ def current_metrics():
 
 
 def train_candidate(out_path):
-    cmd = [
-        sys.executable, TRAIN_SCRIPT,
-        "--limit", "500",
-        "--trees", "150",
-        "--depth", "3",
-        "--no-zt-heat",
-        "--outcomes-dir", OUT_DIR,
-        "--out", out_path,
-    ]
-    subprocess.run(cmd, check=True)
-    with open(out_path, encoding="utf-8") as f:
-        return json.load(f)
+    import train_gap_v2
+
+    args = argparse.Namespace(
+        codes=None,
+        limit=500,
+        trees=150,
+        depth=3,
+        start="2024-08-01",
+        end=time.strftime("%Y-%m-%d"),
+        out=out_path,
+        no_zt_heat=True,
+        outcomes_dir=OUT_DIR,
+    )
+    payload = train_gap_v2.train_model(args)
+    if payload is None:
+        raise RuntimeError("训练样本不足或失败")
+    return payload
 
 
 def should_publish(cur, new):
     if not cur:
         return True
+    gain_top1 = float(new.get("test_top1") or 0) - float(cur.get("test_top1") or 0)
+    gain_top3 = float(new.get("test_top3") or 0) - float(cur.get("test_top3") or 0)
     gain_top10 = float(new.get("test_top10") or 0) - float(cur.get("test_top10") or 0)
     gain_auc = float(new.get("test_auc") or 0) - float(cur.get("test_auc") or 0)
-    return gain_top10 >= 0.005 or (gain_top10 >= 0 and gain_auc >= 0.003)
+    return (gain_top10 >= 0.005 or gain_top3 >= 0.02 or gain_top1 >= 0.03
+            or (gain_top10 >= 0 and gain_auc >= 0.003))
 
 
 def publish(new_path, new_metrics, reason):
@@ -123,9 +130,11 @@ def main():
     if should_publish(cur, new_metrics):
         reason = "first publish" if not cur else "top10/auc improved"
         publish(new_path, new_metrics, reason)
+        return {"action": "publish", "reason": reason, "metrics": new_metrics}
     else:
         reason = "not better than current model"
         reject(new_metrics, reason)
+        return {"action": "reject", "reason": reason, "metrics": new_metrics}
 
 
 if __name__ == "__main__":

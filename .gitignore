@@ -9,4 +9,5 @@ app/android/app/build/
 app/android/app/src/main/python/
 app/android/local.properties
 app/dist/
+app/gap_candidate.json
 .playwright-cli/

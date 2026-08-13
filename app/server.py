@@ -25,6 +25,14 @@ _OVERVIEW_TTL = 30
 _CACHE = {}
 _CACHE_LOCK = threading.Lock()
 GAP_SCOPE = {"main": True, "chi_next": False, "st": False}
+_RETRAIN_STATE = {
+    "running": False,
+    "started": 0,
+    "finished": 0,
+    "result": None,
+    "err": None,
+}
+_RETRAIN_LOCK = threading.Lock()
 
 
 def cached(key, ttl, fn):
@@ -280,6 +288,33 @@ def api_strategy_health():
             "recent": last_days[-10:],
         },
     })
+
+
+@app.route("/api/retrain", methods=["POST"])
+def api_retrain():
+    with _RETRAIN_LOCK:
+        if _RETRAIN_STATE["running"]:
+            return jsonify(_RETRAIN_STATE), 409
+        _RETRAIN_STATE.update(running=True, started=int(time.time()), finished=0,
+                              result=None, err=None)
+
+    def _run():
+        try:
+            import auto_train
+            result = auto_train.main()
+            with _RETRAIN_LOCK:
+                _RETRAIN_STATE.update(running=False, finished=int(time.time()), result=result)
+        except Exception as e:
+            with _RETRAIN_LOCK:
+                _RETRAIN_STATE.update(running=False, finished=int(time.time()), err=str(e))
+
+    threading.Thread(target=_run, daemon=True).start()
+    return jsonify(_RETRAIN_STATE)
+
+
+@app.route("/api/retrain/status")
+def api_retrain_status():
+    return jsonify(_RETRAIN_STATE)
 
 
 def start_background():

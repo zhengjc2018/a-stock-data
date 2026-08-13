@@ -254,20 +254,8 @@ def export_gbdt(model, calib, features, metrics, start, end, n_samples):
     }
 
 
-def main():
-    ap = argparse.ArgumentParser(description="次日高开 GBDT 训练 v2")
-    ap.add_argument("--codes", type=str, default=None)
-    ap.add_argument("--limit", type=int, default=500, help="采样股票数")
-    ap.add_argument("--trees", type=int, default=150)
-    ap.add_argument("--depth", type=int, default=3)
-    ap.add_argument("--start", default="2024-08-01")
-    ap.add_argument("--end", default=time.strftime("%Y-%m-%d"))
-    ap.add_argument("--out", default="gap_model_v2.json")
-    ap.add_argument("--no-zt-heat", action="store_true")
-    ap.add_argument("--outcomes-dir", type=str, default=None,
-                    help="追加已验证的真实候选样本（outcomes 目录）")
-    args = ap.parse_args()
-
+def train_model(args):
+    """进程内训练入口，返回模型 payload dict；CLI 和 auto_train 共用。"""
     if args.codes:
         codes = [c.strip().zfill(6) for c in args.codes.split(",") if c.strip()]
     else:
@@ -277,7 +265,7 @@ def main():
     rows, n_valid = collect_samples(codes, args.start, args.end)
     if not rows:
         print("no samples")
-        return
+        return None
     df = pd.DataFrame(rows)
     print(f"[train] raw samples {len(df)} valid_stocks {n_valid}", flush=True)
 
@@ -301,7 +289,7 @@ def main():
     print(f"[train] train {len(train)} val {len(val)} test {len(test)}", flush=True)
     if len(train) < 2000 or len(val) < 500 or len(test) < 500:
         print("too few samples")
-        return
+        return None
 
     Xtr = train[MODEL_FEATURES].values
     ytr = train["label"].values
@@ -341,6 +329,23 @@ def main():
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False)
     print(f"[train] saved {args.out} ({(os.path.getsize(args.out) / 1024):.0f} KB)", flush=True)
+    return payload
+
+
+def main():
+    ap = argparse.ArgumentParser(description="次日高开 GBDT 训练 v2")
+    ap.add_argument("--codes", type=str, default=None)
+    ap.add_argument("--limit", type=int, default=500, help="采样股票数")
+    ap.add_argument("--trees", type=int, default=150)
+    ap.add_argument("--depth", type=int, default=3)
+    ap.add_argument("--start", default="2024-08-01")
+    ap.add_argument("--end", default=time.strftime("%Y-%m-%d"))
+    ap.add_argument("--out", default="gap_model_v2.json")
+    ap.add_argument("--no-zt-heat", action="store_true")
+    ap.add_argument("--outcomes-dir", type=str, default=None,
+                    help="追加已验证的真实候选样本（outcomes 目录）")
+    args = ap.parse_args()
+    train_model(args)
 
 
 if __name__ == "__main__":

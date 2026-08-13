@@ -449,6 +449,58 @@ async function loadStrategyHealth() {
   }
 }
 
+async function refreshRetrainStatus() {
+  try {
+    const d = await (await fetch("/api/retrain/status")).json();
+    const el = $("retrain-status");
+    const btn = $("retrain-btn");
+    if (d.running) {
+      el.textContent = "训练中，约 3-5 分钟，完成后自动刷新";
+      btn.disabled = true;
+      setTimeout(refreshRetrainStatus, 5000);
+      return;
+    }
+    btn.disabled = false;
+    if (d.err) {
+      el.textContent = "上次训练失败：" + d.err;
+    } else if (d.result && d.result.action === "publish") {
+      el.textContent = `上次：已发布新模型（${(d.result.metrics.test_top10 * 100).toFixed(1)}% Top10）`;
+    } else if (d.result && d.result.action === "reject") {
+      el.textContent = "上次：新模型未达标，未发布";
+    } else {
+      el.textContent = "";
+    }
+  } catch (e) {
+    $("retrain-status").textContent = "";
+  }
+}
+
+async function triggerRetrain() {
+  const el = $("retrain-status");
+  try {
+    const r = await fetch("/api/retrain", { method: "POST" });
+    const d = await r.json();
+    if (!r.ok) {
+      el.textContent = "已有训练进行中，请稍候";
+      return;
+    }
+    el.textContent = "训练已启动，约 3-5 分钟...";
+    $("retrain-btn").disabled = true;
+    setTimeout(() => {
+      const poll = setInterval(async () => {
+        const s = await (await fetch("/api/retrain/status")).json();
+        if (!s.running) {
+          clearInterval(poll);
+          await refreshRetrainStatus();
+          loadStrategyHealth();
+        }
+      }, 5000);
+    }, 2000);
+  } catch (e) {
+    el.textContent = "触发失败";
+  }
+}
+
 const VIEW_LOADERS = {
   overview: loadOverview,
   pools: loadPools,
@@ -487,7 +539,9 @@ $("board-load").addEventListener("click", loadBoards);
 $("stock-load").addEventListener("click", loadStock);
 $("stock-code").addEventListener("keydown", (e) => { if (e.key === "Enter") loadStock(); });
 $("option-load").addEventListener("click", loadOptions);
+$("retrain-btn").addEventListener("click", triggerRetrain);
 
 loadOverview();
 loadGap();
+refreshRetrainStatus();
 setInterval(loadOverview, 120000);

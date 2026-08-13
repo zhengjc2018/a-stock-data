@@ -1,10 +1,14 @@
 package com.astockdata.app;
 
 import android.annotation.SuppressLint;
+import android.Manifest;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.content.pm.PackageManager;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.webkit.WebChromeClient;
@@ -43,6 +47,7 @@ public class MainActivity extends AppCompatActivity {
         webView = findViewById(R.id.webView);
         setupWebView();
         startEmbeddedBackend();
+        startMonitorService();
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -89,6 +94,20 @@ public class MainActivity extends AppCompatActivity {
             waitForBackend();
         } catch (Exception e) {
             Toast.makeText(this, "内置后端启动失败：" + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void startMonitorService() {
+        if (Build.VERSION.SDK_INT >= 33 &&
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                        != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
+        }
+        Intent intent = new Intent(this, MonitorService.class);
+        if (Build.VERSION.SDK_INT >= 26) {
+            startForegroundService(intent);
+        } else {
+            startService(intent);
         }
     }
 

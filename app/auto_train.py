@@ -128,7 +128,7 @@ def main():
     new_metrics = new_model.get("metrics") or {}
     print("[auto_train] candidate", new_metrics, flush=True)
     if should_publish(cur, new_metrics):
-        reason = "first publish" if not cur else "top10/auc improved"
+        reason = "first publish" if not cur else "metrics improved"
         publish(new_path, new_metrics, reason)
         return {"action": "publish", "reason": reason, "metrics": new_metrics}
     else:

@@ -582,7 +582,11 @@ async function loadTState() {
       { key: "price", label: "价格", format: (v) => fmt(v) },
       { key: "qty", label: "数量", format: (v) => fmt(v, 0) },
     ], d.trades || []);
-    if (d.monitoring) {
+    const pendingAnalysis = (d.holdings || []).some((h) => {
+      const s = (h.analysis || {}).status;
+      return s === "analyzing" || s === "profile" || !s;
+    });
+    if (d.monitoring || pendingAnalysis) {
       setTimeout(loadTState, 5000);
     }
   } catch (e) {

@@ -4,3 +4,7 @@
  * Debug mode: off
  * Serving Flask app 'server'
  * Debug mode: off
+[t] 600522 震荡 高波动 opt 0.4923 vs default 0.4429
+ * Serving Flask app 'server'
+ * Debug mode: off
+[t] 002594 震荡 中波动 opt 0.6067 vs default 0.617

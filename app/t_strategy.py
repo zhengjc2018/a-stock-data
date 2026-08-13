@@ -48,6 +48,8 @@ def fetch_kline(symbol, scale, datalen):
                               "Referer": "https://finance.sina.com.cn/"},
                      timeout=15)
     text = r.text
+    if "([" not in text or "])" not in text:
+        return pd.DataFrame()
     payload = text[text.index("([") + 1:text.rindex("])") + 1]
     rows = []
     for it in json.loads(payload):

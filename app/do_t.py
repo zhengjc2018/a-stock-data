@@ -223,7 +223,11 @@ def check_once():
         h["change_pct"] = q.get("change_pct")
     signals = []
     for h in state["holdings"]:
-        sig = _compute_signal(h["code"], h.get("name") or h["code"], h["cost"], h["qty"])
+        try:
+            sig = _compute_signal(h["code"], h.get("name") or h["code"], h["cost"], h["qty"])
+        except Exception as e:
+            print(f"[do_t] signal err {h['code']}: {e}", flush=True)
+            sig = None
         if sig:
             signals.append(sig)
             state["signals"].insert(0, sig)

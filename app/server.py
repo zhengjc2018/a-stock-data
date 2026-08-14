@@ -295,10 +295,11 @@ def api_strategy_health():
 
 @app.route("/api/retrain", methods=["POST"])
 def api_retrain():
+    use_download = False
     try:
         import sklearn  # noqa: F401
     except ImportError:
-        return jsonify({"error": "当前环境未打包 sklearn，无法训练；请在电脑端/云端执行"}), 400
+        use_download = True
     with _RETRAIN_LOCK:
         if _RETRAIN_STATE["running"]:
             return jsonify(_RETRAIN_STATE), 409
@@ -308,7 +309,11 @@ def api_retrain():
     def _run():
         try:
             import auto_train
-            result = auto_train.main()
+            if use_download:
+                metrics = auto_train.download_model()
+                result = {"action": "remote_update", "metrics": metrics}
+            else:
+                result = auto_train.main()
             with _RETRAIN_LOCK:
                 _RETRAIN_STATE.update(running=False, finished=int(time.time()), result=result)
         except Exception as e:

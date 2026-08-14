@@ -473,6 +473,8 @@ async function refreshRetrainStatus() {
       el.textContent = `上次：已发布新模型（${(d.result.metrics.test_top10 * 100).toFixed(1)}% Top10）`;
     } else if (d.result && d.result.action === "reject") {
       el.textContent = "上次：新模型未达标，未发布";
+    } else if (d.result && d.result.action === "remote_update") {
+      el.textContent = `上次：已从 GitHub 同步模型（${(d.result.metrics.test_top10 * 100).toFixed(1)}% Top10）`;
     } else {
       el.textContent = "";
     }

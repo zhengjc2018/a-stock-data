@@ -36,5 +36,19 @@
       "test_top3": 0.6351,
       "test_top10": 0.8784
     }
+  },
+  {
+    "ts": "2026-08-14 23:06:55",
+    "action": "remote_update",
+    "reason": "downloaded from GitHub",
+    "source": "https://gh-proxy.com/https://raw.githubusercontent.com/zhengjc2018/a-stock-data/main/app/gap_model.json",
+    "new_hash": "af02c9511647",
+    "metrics": {
+      "base_rate": 0.0822,
+      "test_auc": 0.6788,
+      "test_top1": 0.3919,
+      "test_top3": 0.6351,
+      "test_top10": 0.8784
+    }
   }
 ]

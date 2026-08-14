@@ -15,6 +15,8 @@ import os
 import shutil
 import time
 
+import requests
+
 import paths
 
 APP_DIR = paths.APP_DIR
@@ -77,6 +79,39 @@ def train_candidate(out_path):
     if payload is None:
         raise RuntimeError("训练样本不足或失败")
     return payload
+
+
+def download_model():
+    """从 GitHub 下载最新 gap_model.json 并更新本地（手机/打包版用）。"""
+    raw_url = "https://raw.githubusercontent.com/zhengjc2018/a-stock-data/main/app/gap_model.json"
+    urls = [raw_url, "https://gh-proxy.com/" + raw_url]
+    target = paths.data_path("gap_model.json")
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    for url in urls:
+        try:
+            r = requests.get(url, timeout=30)
+            if r.status_code != 200:
+                continue
+            raw = r.json()
+            if not (isinstance(raw, dict) and raw.get("type") == "gbdt"
+                    and raw.get("features") and raw.get("trees")):
+                continue
+            with open(target, "w", encoding="utf-8") as f:
+                json.dump(raw, f, ensure_ascii=False)
+            history = _load_history()
+            history.append({
+                "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "action": "remote_update",
+                "reason": "downloaded from GitHub",
+                "source": url,
+                "new_hash": _file_hash(target),
+                "metrics": raw.get("metrics"),
+            })
+            _save_history(history)
+            return raw.get("metrics") or {}
+        except Exception:
+            continue
+    raise RuntimeError("无法从 GitHub 下载模型，请检查网络")
 
 
 def should_publish(cur, new):

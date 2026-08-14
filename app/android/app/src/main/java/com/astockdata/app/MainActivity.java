@@ -90,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
             }
             Python py = Python.getInstance();
             PyObject entry = py.getModule("android_entry");
-            entry.callAttr("start", "127.0.0.1", BACKEND_PORT);
+            entry.callAttr("start", "127.0.0.1", BACKEND_PORT, getFilesDir().getAbsolutePath());
             waitForBackend();
         } catch (Exception e) {
             Toast.makeText(this, "内置后端启动失败：" + e.getMessage(), Toast.LENGTH_LONG).show();

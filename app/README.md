@@ -40,6 +40,7 @@ launchctl load ~/Library/LaunchAgents/com.astockdata.server.plist
 “已启动监控”状态。Android 上如果进程被系统杀掉或强制停止，需要重新打开 App；
 Android APK 已内置前台服务（常驻通知），App 退到后台时进程会被保活，
 做T监控可继续每分钟运行；系统强杀或重启手机后仍需重新打开 App。
+做T信号在安卓上通过前台服务轮询 `t_notify.json` 并弹出系统通知。
 
 页面「策略健康」页签展示当前模型指标、近 30 天真实命中率、模型发布历史和每日验证明细。
 

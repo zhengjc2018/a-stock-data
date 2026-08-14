@@ -14,7 +14,9 @@ def _seed_defaults() -> None:
     paths.ensure_data_dir()
 
 
-def start(host: str = "127.0.0.1", port: int = 5050) -> None:
+def start(host: str = "127.0.0.1", port: int = 5050, data_dir: str = None) -> None:
+    if data_dir:
+        os.environ["APANEL_DATA_DIR"] = data_dir
     _seed_defaults()
 
     from server import app, start_background

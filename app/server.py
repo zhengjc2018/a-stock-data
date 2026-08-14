@@ -7,11 +7,13 @@ import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
 
 from flask import Flask, jsonify, request, send_from_directory
 
 import astock_data as ad
 import datahub
+import daily_loop
 import do_t
 import extra_data as ex
 import gap_model
@@ -235,7 +237,7 @@ def api_options():
 
 @app.route("/api/strategy_health")
 def api_strategy_health():
-    out_dir = app_paths.bundle_path("outcomes")
+    out_dir = app_paths.data_path("outcomes")
     history = []
     history_path = app_paths.bundle_path("model_history.json")
     if os.path.isfile(history_path):
@@ -293,6 +295,10 @@ def api_strategy_health():
 
 @app.route("/api/retrain", methods=["POST"])
 def api_retrain():
+    try:
+        import sklearn  # noqa: F401
+    except ImportError:
+        return jsonify({"error": "当前环境未打包 sklearn，无法训练；请在电脑端/云端执行"}), 400
     with _RETRAIN_LOCK:
         if _RETRAIN_STATE["running"]:
             return jsonify(_RETRAIN_STATE), 409
@@ -375,6 +381,16 @@ def start_background():
         try:
             if do_t.load_state().get("monitoring"):
                 do_t.start()
+        except Exception:
+            pass
+        try:
+            daily_loop.verify_pending()
+        except Exception:
+            pass
+        try:
+            now = datetime.now(timezone(timedelta(hours=8)))
+            if now.hour >= 18:
+                daily_loop.record_candidates()
         except Exception:
             pass
 

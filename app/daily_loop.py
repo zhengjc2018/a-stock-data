@@ -21,7 +21,7 @@ from datetime import datetime, timedelta, timezone
 import datahub
 import paths
 
-OUT_DIR = paths.bundle_path("outcomes")
+OUT_DIR = paths.data_path("outcomes")
 GAP_SCOPE = {"main": True, "chi_next": False, "st": False}
 TOP_N = 100
 CN_TZ = timezone(timedelta(hours=8))

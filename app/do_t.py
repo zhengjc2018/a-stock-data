@@ -20,7 +20,7 @@ STATE_FILE = paths.data_path("t_holdings.json")
 STATE_LOCK = threading.RLock()
 _MONITOR = {"thread": None, "stop": False, "running": False}
 _CACHE = {"bars": {"ts": 0, "data": {}}, "fund": {"ts": 0, "data": {}}}
-T_PARAMS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "t_params")
+T_PARAMS_DIR = os.path.join(paths.data_dir(), "t_params")
 
 DEFAULT_STATE = {
     "holdings": [],
@@ -193,6 +193,15 @@ def _compute_signal(code, name, cost, qty):
 
 
 def notify(title, message):
+    try:
+        with open(paths.data_path("t_notify.json"), "w", encoding="utf-8") as f:
+            json.dump({
+                "title": title,
+                "message": message,
+                "ts": int(time.time() * 1000),
+            }, f, ensure_ascii=False)
+    except Exception:
+        pass
     try:
         script = f'display notification "{message}" with title "{title}"'
         subprocess.run(["osascript", "-e", script], timeout=5, capture_output=True)

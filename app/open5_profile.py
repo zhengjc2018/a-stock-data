@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import argparse
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -36,7 +37,7 @@ def fetch_index_daily():
     return out
 
 
-def collect():
+def collect(threshold):
     index_ret = fetch_index_daily()
     codes = train_gap_v2.sample_codes(500)
     print(f"[open5] codes {len(codes)}", flush=True)
@@ -75,7 +76,7 @@ def collect():
                 feats[name] = v
             if bad:
                 continue
-            label = 1 if float(nxt["open"]) >= float(r["close"]) * 1.05 else 0
+            label = 1 if float(nxt["open"]) >= float(r["close"]) * (1 + threshold) else 0
             rows.append({
                 "date": t_date,
                 "prev_date": prev_date,
@@ -92,7 +93,12 @@ def collect():
 
 
 def main():
-    df = collect()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--threshold", type=float, default=0.05,
+                    help="开盘涨幅阈值，如 0.03 表示 +3%")
+    args = ap.parse_args()
+    threshold = args.threshold
+    df = collect(threshold)
     if df.empty:
         print("no data")
         return
@@ -100,7 +106,8 @@ def main():
     hit = df[df["label"] == 1]
     miss = df[df["label"] == 0]
     base = len(hit) / len(df)
-    print(f"[open5] rows {len(df)} 命中 {len(hit)} 基准 {base:.4f}", flush=True)
+    print(f"[open5] threshold {threshold * 100:.0f}% rows {len(df)} "
+          f"命中 {len(hit)} 基准 {base:.4f}", flush=True)
     print(f"{'feature':<18} {'命中均值':>10} {'未命中均值':>12} {'差值':>10} {'倍数':>6}")
     report = []
     for f in FEATURES + ["index_ret_prev", "industry_mean_prev"]:
@@ -113,7 +120,7 @@ def main():
                        "miss_mean": round(mm, 5), "delta": round(d, 5),
                        "ratio": round(mult, 3)})
     os.makedirs("backtest_report", exist_ok=True)
-    out = "backtest_report/open5_profile.csv"
+    out = f"backtest_report/open{int(threshold * 100)}_profile.csv"
     pd.DataFrame(report).to_csv(out, index=False, encoding="utf-8-sig")
     print(f"saved {out}", flush=True)
     top = hit[FEATURES].quantile([0.5, 0.75, 0.9]).T

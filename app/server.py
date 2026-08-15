@@ -36,6 +36,8 @@ _RETRAIN_STATE = {
     "err": None,
 }
 _RETRAIN_LOCK = threading.Lock()
+_NEWS_NOTIFICATIONS = []
+_NEWS_LAST = {"ths": set(), "em": set(), "telegraph": set(), "global": set()}
 
 
 def cached(key, ttl, fn):
@@ -87,6 +89,65 @@ def get_overview():
             _OVERVIEW_CACHE["err"] = str(e)
         return {"ts": int(time.time()), "indices": {}, "sentiment": {}, "board_flow": {},
                 "error": str(e)}
+
+
+def _load_hot():
+    return {
+        "ths": ad.ths_hot_list(),
+        "em_rank": ad.em_hot_rank(20),
+        "telegraph": ad.cls_telegraph(30),
+        "global": ad.eastmoney_global_news(20),
+    }
+
+
+def _diff_new(key, items, idfn):
+    fresh = []
+    seen = set(_NEWS_LAST.get(key, set()))
+    for it in items:
+        ident = idfn(it)
+        if ident not in seen:
+            fresh.append(it)
+            seen.add(ident)
+    _NEWS_LAST[key] = seen
+    return fresh
+
+
+def _refresh_news():
+    try:
+        d = cached("hot", 120, _load_hot)
+    except Exception:
+        return
+    for it in _diff_new("ths", d.get("ths", []),
+                        lambda x: f"{x.get('code')}:{x.get('rank')}"):
+        msg = f"热榜 {it.get('rank')}. {it.get('name')} {it.get('pct')}%"
+        do_t.notify("A股热榜", msg)
+        _NEWS_NOTIFICATIONS.insert(0, {"ts": time.time(), "kind": "hot",
+                                        "title": "A股热榜", "content": msg})
+    for it in _diff_new("telegraph", d.get("telegraph", []),
+                        lambda x: x.get("title") or x.get("content", "")[:40]):
+        msg = str(it.get("title") or it.get("content") or "")[:80]
+        do_t.notify("财联社电报", msg)
+        _NEWS_NOTIFICATIONS.insert(0, {"ts": time.time(), "kind": "telegraph",
+                                        "title": "财联社电报", "content": msg})
+    for it in _diff_new("global", d.get("global", []),
+                        lambda x: x.get("title", "")[:60]):
+        msg = str(it.get("title") or "")[:80]
+        do_t.notify("全球资讯", msg)
+        _NEWS_NOTIFICATIONS.insert(0, {"ts": time.time(), "kind": "global",
+                                        "title": "全球资讯", "content": msg})
+    del _NEWS_NOTIFICATIONS[50:]
+
+
+def _news_loop():
+    while True:
+        try:
+            now = datetime.now(timezone(timedelta(hours=8)))
+            h = now.hour + now.minute / 60
+            if (9.5 <= h < 11.5) or (13 <= h < 15):
+                _refresh_news()
+        except Exception:
+            pass
+        time.sleep(120)
 
 
 @app.route("/")
@@ -217,14 +278,12 @@ def api_board_flow():
 
 @app.route("/api/hot")
 def api_hot():
-    def load():
-        return {
-            "ths": ad.ths_hot_list(),
-            "em_rank": ad.em_hot_rank(20),
-            "telegraph": ad.cls_telegraph(30),
-            "global": ad.eastmoney_global_news(20),
-        }
-    return jsonify(cached("hot", 120, load))
+    return jsonify(cached("hot", 120, _load_hot))
+
+
+@app.route("/api/notifications")
+def api_notifications():
+    return jsonify(_NEWS_NOTIFICATIONS)
 
 
 @app.route("/api/lhb")
@@ -435,6 +494,7 @@ def api_search():
 
 
 def start_background():
+    threading.Thread(target=_news_loop, daemon=True).start()
     def _warm():
         time.sleep(1)
         try:

@@ -114,5 +114,17 @@
       "test_top3": 0.5811,
       "test_top10": 0.6486
     }
+  },
+  {
+    "ts": "2026-08-15 23:03:41",
+    "action": "reject",
+    "reason": "not better than current model",
+    "metrics": {
+      "base_rate": 0.0124,
+      "test_auc": 0.7521,
+      "test_top1": 0.1081,
+      "test_top3": 0.2568,
+      "test_top10": 0.4865
+    }
   }
 ]

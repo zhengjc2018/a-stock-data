@@ -716,6 +716,28 @@ $("t-check").addEventListener("click", () => postT("/api/t/check"));
 $("t-code").addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(searchStocks, 250); });
 $("t-name").addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(searchStocks, 250); });
 
+const seenNotif = new Set();
+async function pollNotifications() {
+  try {
+    const list = await (await fetch("/api/notifications")).json();
+    const box = $("toast-wrap");
+    list.slice(0, 5).forEach((n) => {
+      const key = `${n.ts}-${n.title}-${n.content}`;
+      if (seenNotif.has(key)) return;
+      seenNotif.add(key);
+      const el = document.createElement("div");
+      el.className = "toast";
+      el.innerHTML = `<div class="tt">${esc(n.title)}</div><div class="tc">${esc(n.content)}</div>`;
+      box.appendChild(el);
+      setTimeout(() => el.remove(), 8000);
+    });
+  } catch (e) {
+    // ignore
+  }
+}
+setInterval(pollNotifications, 30000);
+pollNotifications();
+
 loadOverview();
 loadGap();
 refreshRetrainStatus();

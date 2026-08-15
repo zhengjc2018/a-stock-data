@@ -619,6 +619,7 @@ def _enhance_candidates(candidates):
             pass
         main_net_yi = float(fund.get("main_net") or 0) / 1e8
         lhb_count = len((lhb or {}).get("records") or [])
+        lhb_inst_net = float((lhb or {}).get("institution", {}).get("net_amt") or 0)
         hot_rank = hot.get(str(c["code"]))
         event_flag = 0
         event_note = ""
@@ -633,7 +634,9 @@ def _enhance_candidates(candidates):
                     event_note = "利好事件"
         boost = 0.0
         if main_net_yi > 0:
-            boost += 0.02
+            boost += 0.03
+        elif main_net_yi < 0:
+            boost -= 0.05
         if hot_rank:
             boost += 0.02
         if lhb_count > 0:
@@ -643,8 +646,15 @@ def _enhance_candidates(candidates):
         if event_flag < 0:
             boost -= 0.03
         c["main_net_yi"] = round(main_net_yi, 2)
+        c["lhb_inst_net"] = round(lhb_inst_net, 1)
         c["hot_rank"] = hot_rank
         c["lhb_count_5"] = lhb_count
+        if main_net_yi > 0.5 or lhb_inst_net > 0:
+            c["main_intent"] = "吸筹"
+        elif main_net_yi < -0.5 or lhb_inst_net < 0:
+            c["main_intent"] = "流出"
+        else:
+            c["main_intent"] = "中性"
         c["event_note"] = event_note
         c["boost"] = round(boost, 4)
         prob = c.get("prob") or 0

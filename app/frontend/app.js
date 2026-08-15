@@ -303,6 +303,7 @@ function renderGap(payload) {
     { key: "change_pct", label: "今日", format: (v) => signed(v) + "%", cls: (v) => cls(v) },
     { key: "prob", label: "高开概率", format: (v) => (v === null || v === undefined || Number.isNaN(v) ? "--" : (v * 100).toFixed(1) + "%") },
     { key: "main_net_yi", label: "主力净额", format: (v) => (v === null || v === undefined ? "--" : fmt(v, 1) + "亿"), cls: (v) => cls(v), hideSm: true },
+    { key: "main_intent", label: "主力意图", format: (v) => v || "--", hideSm: true },
     { key: "lhb_count_5", label: "5日龙虎榜", format: (v) => v || "--", hideSm: true },
     { key: "hot_rank", label: "热榜", format: (v) => v || "--", hideSm: true },
     { key: "reason", label: "入选理由", align: "left" },

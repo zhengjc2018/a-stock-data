@@ -584,6 +584,79 @@ def score_candidates(candidates: list[dict]) -> list[dict]:
     return records
 
 
+def _enhance_candidates(candidates):
+    """用主力资金/热榜/龙虎榜/公告事件对 TopN 二次确认并重排。"""
+    if not candidates:
+        return []
+    import astock_data as ad
+    import extra_data as ex
+
+    hot = {}
+    try:
+        for r in ad.em_hot_rank(50):
+            hot[str(r.get("code"))] = r.get("rank")
+    except Exception:
+        pass
+
+    def _worker(c):
+        c = dict(c)
+        fund = {}
+        lhb = {}
+        ann = []
+        try:
+            rows = ad.stock_fund_flow_120d(c["code"])
+            if rows:
+                fund = rows[-1]
+        except Exception:
+            pass
+        try:
+            lhb = ad.dragon_tiger_board(c["code"], look_back=5)
+        except Exception:
+            pass
+        try:
+            ann = ex.cninfo_announcements(c["code"], 8)
+        except Exception:
+            pass
+        main_net_yi = float(fund.get("main_net") or 0) / 1e8
+        lhb_count = len((lhb or {}).get("records") or [])
+        hot_rank = hot.get(str(c["code"]))
+        event_flag = 0
+        event_note = ""
+        for a in (ann or [])[:7]:
+            t = str(a.get("title", ""))
+            if any(k in t for k in ("解禁", "减持")):
+                event_flag = -1
+                event_note = "解禁/减持"
+            elif any(k in t for k in ("业绩预增", "回购", "中标", "增持")):
+                if event_flag >= 0:
+                    event_flag = 1
+                    event_note = "利好事件"
+        boost = 0.0
+        if main_net_yi > 0:
+            boost += 0.02
+        if hot_rank:
+            boost += 0.02
+        if lhb_count > 0:
+            boost += 0.02
+        if event_flag > 0:
+            boost += 0.02
+        if event_flag < 0:
+            boost -= 0.03
+        c["main_net_yi"] = round(main_net_yi, 2)
+        c["hot_rank"] = hot_rank
+        c["lhb_count_5"] = lhb_count
+        c["event_note"] = event_note
+        c["boost"] = round(boost, 4)
+        prob = c.get("prob") or 0
+        c["enhanced_prob"] = round(max(min(prob + boost, 1.0), 0.0), 4)
+        return c
+
+    with ThreadPoolExecutor(max_workers=4, thread_name_prefix="gap-boost") as ex:
+        out = list(ex.map(_worker, candidates))
+    out.sort(key=lambda x: x.get("enhanced_prob") or 0, reverse=True)
+    return out
+
+
 def _recommend_reason(row) -> str:
     parts = []
     if row.get("vol_ratio_5_hit"):
@@ -666,6 +739,7 @@ def _compute(scope=None):
         index_ret_prev, industry_mean_map, index_ma5_up, industry_rank_map)
     print(f"[gap_pick] 硬过滤后候选 {len(candidates)} 只，开始评分", flush=True)
     scored = score_candidates(candidates)
+    scored = _enhance_candidates(scored[:TOP_N])
     ranking = "model" if any(pd.notna(c.get("prob")) for c in scored) else "rule"
     return {
         "date": trade_date,

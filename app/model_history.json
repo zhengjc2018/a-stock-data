@@ -50,5 +50,18 @@
       "test_top3": 0.6351,
       "test_top10": 0.8784
     }
+  },
+  {
+    "ts": "2026-08-15 14:03:34",
+    "action": "publish",
+    "reason": "target +3% with market/sector features",
+    "new_hash": "088ede05d7b6",
+    "metrics": {
+      "base_rate": 0.0128,
+      "test_auc": 0.7532,
+      "test_top1": 0.2568,
+      "test_top3": 0.4054,
+      "test_top10": 0.527
+    }
   }
 ]

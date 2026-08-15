@@ -344,8 +344,11 @@ def build_candidates(
     zt_df: pd.DataFrame,
     trade_date: str,
     scope: dict | None = None,
+    index_ret_prev: float = 0.0,
+    industry_mean_map: dict | None = None,
 ) -> list[dict]:
     scope = scope or {}
+    industry_mean_map = industry_mean_map or {}
     total = len(snapshot_df)
     progress = {"done": 0}
     progress_lock = threading.Lock()
@@ -419,6 +422,8 @@ def build_candidates(
                 "prev_limit_up": int(_to_float(last.get("prev_limit_up"), 0)),
                 "limit_streak_prev": int(_to_float(last.get("limit_streak_prev"), 0)),
                 "industry_zt_count": 0,
+                "index_ret_prev": index_ret_prev,
+                "industry_mean_prev": 0,
             }
             if any(v is None or pd.isna(v) for v in features.values()):
                 return None
@@ -450,6 +455,7 @@ def build_candidates(
     for candidate in out:
         candidate["industry_limit_count"] = int(heat.get(candidate["industry"], 0))
         candidate["industry_zt_count"] = candidate["industry_limit_count"]
+        candidate["industry_mean_prev"] = float(industry_mean_map.get(candidate["industry"], 0.0))
     return out
 
 
@@ -538,6 +544,17 @@ def _compute(scope=None):
     scoped_df = snapshot_df[
         snapshot_df["code"].astype(str).str.zfill(6).map(_board_of).isin(allowed_boards)
     ].copy()
+    industry_mean_map = (
+        snapshot_df.assign(industry=snapshot_df["industry"].fillna("未知行业"))
+        .groupby("industry")["pct_chg"].mean().to_dict()
+    )
+    idx_rows = server._klines("1.000001", 101, 5)
+    index_ret_prev = 0.0
+    if len(idx_rows) >= 2:
+        c1 = float(idx_rows[-2]["close"])
+        c2 = float(idx_rows[-1]["close"])
+        if c1:
+            index_ret_prev = c2 / c1 - 1
     print(f"[gap_pick] 交易权限范围内 {len(scoped_df)} 行", flush=True)
     # 涨停池接口失败时，用快照中涨幅 >=9.8% 的票近似补行业热度，不阻塞主流程。
     if zt_df.empty:
@@ -547,7 +564,8 @@ def _compute(scope=None):
             approx["连板数"] = 1
             approx["所属行业"] = approx["代码"].map(_stock_industry).fillna("未知行业")
             zt_df = approx[["代码", "名称", "涨跌幅", "连板数", "所属行业"]]
-    candidates = build_candidates(scoped_df, zt_df, trade_date, scope)
+    candidates = build_candidates(
+        scoped_df, zt_df, trade_date, scope, index_ret_prev, industry_mean_map)
     print(f"[gap_pick] 硬过滤后候选 {len(candidates)} 只，开始评分", flush=True)
     scored = score_candidates(candidates)
     ranking = "model" if any(pd.notna(c.get("prob")) for c in scored) else "rule"

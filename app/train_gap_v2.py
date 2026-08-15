@@ -3,7 +3,7 @@
 
 产物 gap_model.json 由 App/EXE/APK 用纯 numpy 推理，运行时不依赖 sklearn。
 样本口径与 gap_pick.py 对齐：主板、排除 ST/当日涨停/价格>80；
-标签 = T+1 开盘 >= 信号日收盘 * 1.01。
+标签 = T+1 开盘 >= 信号日收盘 * (1 + label_gap)，默认 +3%。
 """
 from __future__ import annotations
 
@@ -44,6 +44,8 @@ MODEL_FEATURES = [
     "up_days_5",
     "prev_limit_up",
     "limit_streak_prev",
+    "index_ret_prev",
+    "industry_mean_prev",
 ]
 
 DAILY_BARS = 800
@@ -86,7 +88,7 @@ def sample_codes(limit):
     return codes
 
 
-def collect_samples(codes, start, end, verbose=True):
+def collect_samples(codes, start, end, index_ret, label_gap, verbose=True):
     rows = []
     t0 = time.time()
     n_valid = 0
@@ -107,14 +109,14 @@ def collect_samples(codes, start, end, verbose=True):
             if df is None:
                 continue
             n_valid += 1
-            _append_rows(code, df, industry, start, end, rows)
+            _append_rows(code, df, industry, start, end, index_ret, label_gap, rows)
             if verbose and done % 50 == 0:
                 el = time.time() - t0
                 print(f"[train] {done}/{len(codes)} 有效 {n_valid} 只 | 样本 {len(rows)} | 已用 {el:.0f}s", flush=True)
     return rows, n_valid
 
 
-def _append_rows(code, df, industry, start, end, rows):
+def _append_rows(code, df, industry, start, end, index_ret, label_gap, rows):
     for j in range(len(df) - 1):
         r = df.iloc[j]
         nxt = df.iloc[j + 1]
@@ -131,6 +133,9 @@ def _append_rows(code, df, industry, start, end, rows):
         feats = {}
         bad = False
         for name in MODEL_FEATURES:
+            if name in ("industry_zt_count", "index_ret_prev", "industry_mean_prev"):
+                feats[name] = 0.0
+                continue
             if name == "industry_zt_count":
                 feats[name] = 0.0
                 continue
@@ -146,7 +151,8 @@ def _append_rows(code, df, industry, start, end, rows):
             feats[name] = fv
         if bad:
             continue
-        label = 1 if float(nxt["open"]) >= price * 1.01 else 0
+        feats["index_ret_prev"] = index_ret.get(date, 0.0)
+        label = 1 if float(nxt["open"]) >= price * (1 + label_gap) else 0
         rows.append({"date": date, "code": code, "industry": industry,
                      **feats, "label": label})
 
@@ -262,7 +268,18 @@ def train_model(args):
         codes = sample_codes(args.limit)
     print(f"[train] codes: {len(codes)}", flush=True)
 
-    rows, n_valid = collect_samples(codes, args.start, args.end)
+    idx_rows = server._klines("1.000001", 101, 800)
+    index_ret = {}
+    prev_close = None
+    for r in idx_rows:
+        date = str(r["date"])[:10]
+        close = float(r["close"])
+        if prev_close:
+            index_ret[date] = close / prev_close - 1
+        prev_close = close
+
+    rows, n_valid = collect_samples(
+        codes, args.start, args.end, index_ret, args.label_gap)
     if not rows:
         print("no samples")
         return None
@@ -278,6 +295,8 @@ def train_model(args):
             df = pd.concat([df, extra], ignore_index=True)
             df = df.drop_duplicates(subset=["date", "code"], keep="first")
             print(f"[train] outcomes appended {len(added)} -> {len(df)}", flush=True)
+
+    df["industry_mean_prev"] = df.groupby(["date", "industry"])["pct_chg"].transform("mean")
 
     if not args.no_zt_heat:
         heat = load_zt_heat(df["date"].unique())
@@ -341,6 +360,8 @@ def main():
     ap.add_argument("--start", default="2024-08-01")
     ap.add_argument("--end", default=time.strftime("%Y-%m-%d"))
     ap.add_argument("--out", default="gap_model_v2.json")
+    ap.add_argument("--label-gap", type=float, default=0.03,
+                    help="次日高开标签阈值，默认 0.03 = +3%")
     ap.add_argument("--no-zt-heat", action="store_true")
     ap.add_argument("--outcomes-dir", type=str, default=None,
                     help="追加已验证的真实候选样本（outcomes 目录）")

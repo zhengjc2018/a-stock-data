@@ -101,5 +101,18 @@
       "test_top3": 0.5811,
       "test_top10": 0.6351
     }
+  },
+  {
+    "ts": "2026-08-15 19:23:30",
+    "action": "publish",
+    "reason": "v7 added bullish patterns improved",
+    "new_hash": "c9f12b5868dd",
+    "metrics": {
+      "base_rate": 0.0126,
+      "test_auc": 0.7569,
+      "test_top1": 0.473,
+      "test_top3": 0.5811,
+      "test_top10": 0.6486
+    }
   }
 ]

@@ -63,6 +63,8 @@ EXTRA_FEATURES = [
     "kdj_k", "kdj_d", "kdj_j", "kdj_gold", "rsi6", "bias5", "bias10",
     "bias20", "roc10", "boll_pos", "boll_width", "ma_bull", "atr14",
     "vol_shrink", "hammer", "long_upper", "engulfing", "gap_up_20",
+    "morning_star", "three_white_soldiers", "bullish_harami", "piercing",
+    "rising_three", "turtle_breakout", "ma_reclaim",
 ]
 
 _GAP_CACHE = {"ts": 0, "data": None, "computing": False, "last_err": None}
@@ -369,6 +371,41 @@ def _add_features(df: pd.DataFrame) -> pd.DataFrame:
         (close >= prev_open) & (open_ <= prev_close)
     ).astype(int)
     out["gap_up_20"] = ((open_ / prev_close - 1) > 0.01).rolling(20).sum()
+    c1 = close.shift(2)
+    o1 = open_.shift(2)
+    c2 = close.shift(1)
+    o2 = open_.shift(1)
+    body1 = (c1 - o1).abs()
+    body2 = (c2 - o2).abs()
+    out["morning_star"] = (
+        (c1 < o1) & (body2 < 0.4 * body1) &
+        (close > open_) & (close > (o1 + c1) / 2)
+    ).astype(int)
+    out["three_white_soldiers"] = (
+        (close > open_) & (c2 > o2) & (c1 > o1) &
+        (close > c2) & (c2 > c1)
+    ).astype(int)
+    out["bullish_harami"] = (
+        (c1 < o1) & (body1 > 2 * (close - open_).abs()) &
+        (open_ <= c1) & (close >= o1) & (close > open_)
+    ).astype(int)
+    prev_mid = (o1 + c1) / 2
+    out["piercing"] = (
+        (c1 < o1) & (open_ < c1) & (close > prev_mid) &
+        (close < o1) & (close > open_)
+    ).astype(int)
+    f_o = open_.shift(4)
+    f_c = close.shift(4)
+    mid_high = high.shift(1).rolling(3).max()
+    mid_low = low.shift(1).rolling(3).min()
+    out["rising_three"] = (
+        (f_c > f_o) & (close > open_) & (close > f_c) &
+        (mid_low > f_o) & (mid_high < f_c)
+    ).astype(int)
+    out["turtle_breakout"] = (close >= prev_high20).astype(int)
+    out["ma_reclaim"] = (
+        (close > ma10) & (recent_low5 >= ma10 * 0.98) & (out["pct_chg"] > 0)
+    ).astype(int)
     return out
 
 

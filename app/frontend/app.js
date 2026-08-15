@@ -293,7 +293,7 @@ function renderGap(payload) {
   const mm = (payload.model && payload.model.metrics) || {};
   const top10 = mm.test_top10 ? `测试Top10命中 ${(mm.test_top10 * 100).toFixed(1)}%` : "";
   meta.textContent = `${data.date} · 仅主板 · GBDT校准 · ${ranking} · 候选 ${data.total} 只 · ${top10} · 耗时 ${data.elapsed_sec}s`;
-  const top = data.candidates.slice(0, 10);
+  const top = data.candidates.slice(0, 5);
   box.innerHTML = table([
     { key: "rank", label: "#", align: "left", raw: true, format: (v, r) => `<b>${r._i + 1}</b>` },
     { key: "code", label: "代码", align: "left" },

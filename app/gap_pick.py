@@ -17,6 +17,7 @@ import requests
 
 import paths
 import gap_model
+import tail_model
 
 # 数据层统一走 datahub（HKS server 的轻量子集）。
 import datahub as server
@@ -610,6 +611,12 @@ def score_candidates(candidates: list[dict]) -> list[dict]:
         def _prob(row):
             return gap_model.score({k: row.get(k) for k in model_feats})
         df["prob"] = df.apply(_prob, axis=1)
+    tail_feats = tail_model.model_features()
+    df["tail_prob"] = np.nan
+    if tail_feats:
+        def _tail(row):
+            return tail_model.score({k: row.get(k) for k in tail_feats})
+        df["tail_prob"] = df.apply(_tail, axis=1)
     if df["prob"].notna().any():
         df = df.sort_values(
             ["prob", "score", "industry_limit_count"],
@@ -622,6 +629,8 @@ def score_candidates(candidates: list[dict]) -> list[dict]:
     for rec in records:
         if rec.get("prob") is not None and pd.isna(rec["prob"]):
             rec["prob"] = None
+        if rec.get("tail_prob") is not None and pd.isna(rec["tail_prob"]):
+            rec["tail_prob"] = None
     return records
 
 
@@ -727,7 +736,7 @@ def _enhance_candidates(candidates):
             c["main_intent"] = "中性"
         c["event_note"] = event_note
         c["boost"] = round(boost, 4)
-        prob = c.get("prob") or 0
+        prob = c.get("tail_prob") or c.get("prob") or 0
         c["enhanced_prob"] = round(max(min(prob + boost, 1.0), 0.0), 4)
         return c
 

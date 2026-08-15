@@ -172,6 +172,10 @@ def score(features) -> float | None:
     m = _load()
     if not m:
         return None
+    return score_model(m, features)
+
+
+def score_model(m, features) -> float | None:
     feats = m["features"]
     try:
         x = np.empty(len(feats), dtype=float)

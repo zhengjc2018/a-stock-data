@@ -379,6 +379,9 @@ def train_model(args):
     calib = IsotonicRegression(out_of_bounds="clip")
     calib.fit(val_p, val["label"].values)
     payload = export_gbdt(model, calib, MODEL_FEATURES, metrics, args.start, args.end, len(df))
+    out_dir = os.path.dirname(args.out)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False)
     print(f"[train] saved {args.out} ({(os.path.getsize(args.out) / 1024):.0f} KB)", flush=True)

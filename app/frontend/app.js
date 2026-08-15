@@ -652,8 +652,7 @@ async function loadTailState() {
       { key: "name", label: "名称", align: "left" },
       { key: "price", label: "现价", format: (v) => fmt(v) },
       { key: "prob", label: "概率", format: (v) => (v * 100).toFixed(1) + "%" },
-      { key: "prev_limit_up", label: "昨涨停", format: (v) => v ? "是" : "否" },
-      { key: "main_net_yi", label: "主力净额", format: (v) => fmt(v, 1) + "亿", cls: (v) => cls(v) },
+      { key: "amount_yi", label: "成交额", format: (v) => fmt(v, 1) + "亿" },
       { key: "op", label: "操作", raw: true, format: (v, r) =>
         `<button data-buy="${esc(r.code)}" data-name="${esc(r.name)}" data-price="${r.price}">买入</button>` },
       ], d.candidates)
@@ -677,9 +676,13 @@ async function loadTailState() {
       { key: "name", label: "名称", align: "left" },
       { key: "entry_price", label: "买入", format: (v) => fmt(v) },
       { key: "exit_open", label: "开盘", format: (v) => fmt(v) },
-      { key: "pct", label: "高开", format: (v) => signed(v) + "%", cls: (v) => cls(v) },
+      { key: "exit_high", label: "盘中最高", format: (v) => fmt(v) },
+      { key: "pct", label: "最高达", format: (v) => signed(v) + "%", cls: (v) => cls(v) },
       { key: "hit", label: "命中", format: (v) => v ? "是" : "否", cls: (v) => v ? "up" : "down" },
     ], d.trades || []);
+    if (d.signal_running) {
+      setTimeout(loadTailState, 5000);
+    }
   } catch (e) {
     $("tail-candidates").innerHTML = '<div class="empty">加载失败</div>';
   }

@@ -9,15 +9,20 @@ import json
 import os
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+
+import pandas as pd
 
 import datahub
 import gap_pick
 import paths
+import tail_model
 
 CN_TZ = timezone(timedelta(hours=8))
 STATE_FILE = paths.data_path("tail_state.json")
 STATE_LOCK = threading.RLock()
+_SIGNAL = {"running": False}
 
 DEFAULT_STATE = {
     "positions": [],
@@ -56,35 +61,102 @@ def save_state(state):
 
 def generate_signal():
     state = load_state()
-    scope = {"main": True, "chi_next": False, "st": False}
-    data = gap_pick.get_cache(scope, trigger=False)
-    if not data or not data.get("candidates"):
-        state["last_signal"] = {"time": _now(), "msg": "尚无候选，请先计算"}
+    if _SIGNAL["running"]:
+        state["last_signal"] = {"time": _now(), "msg": "计算中，请稍候"}
         save_state(state)
         return state
-    cands = data["candidates"]
-    strong = []
-    for c in cands:
-        if c.get("event_note") in ("解禁/减持",):
-            continue
-        if not (c.get("prev_limit_up") or c.get("limit_streak_prev")):
-            continue
-        if (c.get("main_net_yi") or 0) < 0:
-            continue
-        strong.append(c)
-    strong.sort(key=lambda x: x.get("enhanced_prob") or x.get("prob") or 0, reverse=True)
-    top = strong[:3] if strong else cands[:3]
+    _SIGNAL["running"] = True
+    state["last_signal"] = {"time": _now(), "msg": "计算中，约需几分钟"}
+    save_state(state)
+    threading.Thread(target=_run_signal, daemon=True).start()
+    return state
+
+
+def _run_signal():
+    state = load_state()
+    snapshot = gap_pick.fetch_market_snapshot()
+    if snapshot.empty:
+        state["last_signal"] = {"time": _now(), "msg": "全市场快照为空"}
+        _SIGNAL["running"] = False
+        save_state(state)
+        return
+    industry_mean_map = (
+        snapshot.assign(industry=snapshot["industry"].fillna("未知行业"))
+        .groupby("industry")["pct_chg"].mean().to_dict()
+    )
+    industry_rank_map = pd.Series(industry_mean_map).rank(pct=True).to_dict()
+    idx_rows = datahub._klines("1.000001", 101, 5)
+    index_ret_prev = 0.0
+    index_ma5_up = 0.0
+    if len(idx_rows) >= 2:
+        c1 = float(idx_rows[-2]["close"])
+        c2 = float(idx_rows[-1]["close"])
+        if c1:
+            index_ret_prev = c2 / c1 - 1
+    if len(idx_rows) >= 5:
+        closes = [float(r["close"]) for r in idx_rows[-5:]]
+        index_ma5_up = 1.0 if closes[-1] > sum(closes) / len(closes) else 0.0
+    feats_names = tail_model.model_features()
+    if not feats_names:
+        state["last_signal"] = {"time": _now(), "msg": "尾盘模型不存在"}
+        _SIGNAL["running"] = False
+        save_state(state)
+        return
+
+    def _score(row):
+        code = str(row.get("code", "")).zfill(6)
+        name = str(row.get("name", ""))
+        if "退" in name:
+            return None
+        price = float(row.get("price") or 0)
+        if price <= 0:
+            return None
+        amount_yi = float(row.get("volume_lots") or 0) * 100 * price / 1e8
+        if amount_yi < 0.5:
+            return None
+        secid = f"{'1' if code[0] in '689' else '0'}.{code}"
+        hist = gap_pick._history_df(
+            secid, time.strftime("%Y-%m-%d"), price,
+            row.get("high"), row.get("low"), row.get("volume_lots"), row.get("amount"))
+        if hist is None:
+            return None
+        last = hist.iloc[-1]
+        feats = {}
+        for k in feats_names:
+            if k in ("index_ret_prev", "index_ma5_up", "industry_mean_prev", "industry_rank_prev"):
+                continue
+            try:
+                v = float(last.get(k))
+            except (TypeError, ValueError):
+                return None
+            if pd.isna(v):
+                return None
+            feats[k] = v
+        industry = str(row.get("industry") or "").strip() or "未知行业"
+        feats["index_ret_prev"] = index_ret_prev
+        feats["index_ma5_up"] = index_ma5_up
+        feats["industry_mean_prev"] = float(industry_mean_map.get(industry, 0.0))
+        feats["industry_rank_prev"] = float(industry_rank_map.get(industry, 0.0))
+        prob = tail_model.score(feats)
+        if prob is None:
+            return None
+        return {"code": code, "name": name, "price": price, "prob": round(float(prob), 4),
+                "amount_yi": round(amount_yi, 2)}
+
+    top = []
+    with ThreadPoolExecutor(max_workers=4, thread_name_prefix="tail-scan") as ex:
+        for c in ex.map(_score, snapshot.to_dict("records")):
+            if c:
+                top.append(c)
+    top.sort(key=lambda x: x["prob"], reverse=True)
+    top = top[:3]
     state["candidates"] = [{
-        "code": c["code"],
-        "name": c.get("name", ""),
-        "price": c.get("price"),
-        "prob": c.get("enhanced_prob") or c.get("prob"),
-        "prev_limit_up": c.get("prev_limit_up"),
-        "main_net_yi": c.get("main_net_yi"),
+        "code": c["code"], "name": c["name"], "price": c["price"],
+        "prob": c["prob"], "amount_yi": c["amount_yi"],
     } for c in top]
     state["last_signal"] = {"time": _now(), "count": len(top)}
+    _SIGNAL["running"] = False
     save_state(state)
-    return state
 
 
 def buy(code, name, price):
@@ -111,18 +183,20 @@ def verify_next_day():
     for p in state["positions"]:
         q = quotes.get(p["code"]) or {}
         open_ = q.get("open") or 0
+        high = q.get("high") or 0
         if not open_:
             remaining.append(p)
             continue
-        hit = open_ / p["entry_price"] - 1 >= 0.03
+        hit = max(open_, high) / p["entry_price"] - 1 >= 0.03
         state["trades"].insert(0, {
             "code": p["code"],
             "name": p["name"],
             "entry_date": p["entry_date"],
             "entry_price": p["entry_price"],
             "exit_open": round(open_, 3),
+            "exit_high": round(high, 3),
             "exit_date": today,
-            "pct": round((open_ / p["entry_price"] - 1) * 100, 2),
+            "pct": round((max(open_, high) / p["entry_price"] - 1) * 100, 2),
             "hit": hit,
         })
     state["trades"] = state["trades"][:500]
@@ -151,6 +225,7 @@ def stats():
         "candidates": state.get("candidates", []),
         "last_signal": state.get("last_signal"),
         "last_verify": state.get("last_verify"),
+        "signal_running": _SIGNAL["running"],
         "stats": {
             "trades": total,
             "hit_rate": round(hits / total, 4) if total else None,

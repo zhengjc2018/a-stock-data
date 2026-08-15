@@ -76,5 +76,17 @@
       "test_top3": 0.3649,
       "test_top10": 0.5405
     }
+  },
+  {
+    "ts": "2026-08-15 17:12:28",
+    "action": "reject",
+    "reason": "tuned model not better",
+    "metrics": {
+      "base_rate": 0.0127,
+      "test_auc": 0.7546,
+      "test_top1": 0.2162,
+      "test_top3": 0.3514,
+      "test_top10": 0.5405
+    }
   }
 ]

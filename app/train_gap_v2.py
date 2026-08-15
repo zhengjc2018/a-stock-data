@@ -266,8 +266,8 @@ def export_gbdt(model, calib, features, metrics, start, end, n_samples):
     }
 
 
-def train_model(args):
-    """进程内训练入口，返回模型 payload dict；CLI 和 auto_train 共用。"""
+def prepare_data(args):
+    """采集并构造训练数据集，返回 DataFrame；供训练和超参搜索复用。"""
     if args.codes:
         codes = [c.strip().zfill(6) for c in args.codes.split(",") if c.strip()]
     else:
@@ -323,6 +323,14 @@ def train_model(args):
         df["industry_zt_count"] = df.apply(
             lambda r: heat.get((r["date"], r["industry"]), 0), axis=1)
         print("[train] zt heat joined", flush=True)
+    return df
+
+
+def train_model(args):
+    """进程内训练入口，返回模型 payload dict；CLI 和 auto_train 共用。"""
+    df = prepare_data(args)
+    if df is None:
+        return None
 
     train, val, test = split_by_date(df)
     print(f"[train] train {len(train)} val {len(val)} test {len(test)}", flush=True)

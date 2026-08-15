@@ -75,6 +75,7 @@ def train_candidate(out_path):
         no_zt_heat=True,
         outcomes_dir=OUT_DIR,
         label_gap=0.03,
+        reach=False,
     )
     payload = train_gap_v2.train_model(args)
     if payload is None:

@@ -65,6 +65,7 @@ EXTRA_FEATURES = [
     "vol_shrink", "hammer", "long_upper", "engulfing", "gap_up_20",
     "morning_star", "three_white_soldiers", "bullish_harami", "piercing",
     "rising_three", "turtle_breakout", "ma_reclaim",
+    "close_pos", "close_high_ratio",
 ]
 
 _GAP_CACHE = {"ts": 0, "data": None, "computing": False, "last_err": None}
@@ -406,6 +407,9 @@ def _add_features(df: pd.DataFrame) -> pd.DataFrame:
     out["ma_reclaim"] = (
         (close > ma10) & (recent_low5 >= ma10 * 0.98) & (out["pct_chg"] > 0)
     ).astype(int)
+    span_day = (high - low).replace(0, np.nan)
+    out["close_pos"] = (close - low) / span_day
+    out["close_high_ratio"] = close / high
     return out
 
 

@@ -34,6 +34,7 @@ def main():
         label_gap=args.label_gap,
         trees=150,
         depth=3,
+        reach=False,
     )
     df = train_gap_v2.prepare_data(data_args)
     if df is None:

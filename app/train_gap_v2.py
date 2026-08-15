@@ -92,7 +92,7 @@ def sample_codes(limit):
     return codes
 
 
-def collect_samples(codes, start, end, index_ret, index_ma5_up, label_gap, verbose=True):
+def collect_samples(codes, start, end, index_ret, index_ma5_up, label_gap, reach, verbose=True):
     rows = []
     t0 = time.time()
     n_valid = 0
@@ -113,14 +113,14 @@ def collect_samples(codes, start, end, index_ret, index_ma5_up, label_gap, verbo
             if df is None:
                 continue
             n_valid += 1
-            _append_rows(code, df, industry, start, end, index_ret, index_ma5_up, label_gap, rows)
+            _append_rows(code, df, industry, start, end, index_ret, index_ma5_up, label_gap, reach, rows)
             if verbose and done % 50 == 0:
                 el = time.time() - t0
                 print(f"[train] {done}/{len(codes)} 有效 {n_valid} 只 | 样本 {len(rows)} | 已用 {el:.0f}s", flush=True)
     return rows, n_valid
 
 
-def _append_rows(code, df, industry, start, end, index_ret, index_ma5_up, label_gap, rows):
+def _append_rows(code, df, industry, start, end, index_ret, index_ma5_up, label_gap, reach, rows):
     for j in range(len(df) - 1):
         r = df.iloc[j]
         nxt = df.iloc[j + 1]
@@ -158,8 +158,13 @@ def _append_rows(code, df, industry, start, end, index_ret, index_ma5_up, label_
             continue
         feats["index_ret_prev"] = index_ret.get(date, 0.0)
         feats["index_ma5_up"] = index_ma5_up.get(date, 0.0)
-        label = 1 if float(nxt["open"]) >= price * (1 + label_gap) else 0
+        if reach:
+            label = 1 if float(max(nxt["open"], nxt["high"])) >= price * (1 + label_gap) else 0
+        else:
+            label = 1 if float(nxt["open"]) >= price * (1 + label_gap) else 0
         rows.append({"date": date, "code": code, "industry": industry,
+                     "close": price,
+                     "volume": float(r.get("volume") or r.get("vol") or 0),
                      **feats, "label": label})
 
 
@@ -293,7 +298,8 @@ def prepare_data(args):
         prev_close = close
 
     rows, n_valid = collect_samples(
-        codes, args.start, args.end, index_ret, index_ma5_up, args.label_gap)
+        codes, args.start, args.end, index_ret, index_ma5_up, args.label_gap,
+        getattr(args, "reach", False))
     if not rows:
         print("no samples")
         return None
@@ -390,6 +396,8 @@ def main():
     ap.add_argument("--out", default="gap_model_v2.json")
     ap.add_argument("--label-gap", type=float, default=0.03,
                     help="次日高开标签阈值，默认 0.03 = +3%")
+    ap.add_argument("--reach", action="store_true",
+                    help="标签改为 T+1 开盘或盘中最高 ≥ +3%")
     ap.add_argument("--no-zt-heat", action="store_true")
     ap.add_argument("--outcomes-dir", type=str, default=None,
                     help="追加已验证的真实候选样本（outcomes 目录）")

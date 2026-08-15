@@ -46,7 +46,11 @@ MODEL_FEATURES = [
     "limit_streak_prev",
     "index_ret_prev",
     "industry_mean_prev",
-]
+    "vol_breakout",
+    "duck_head",
+    "index_ma5_up",
+    "industry_rank_prev",
+] + [f for f in gap_pick.EXTRA_FEATURES]
 
 DAILY_BARS = 800
 
@@ -88,7 +92,7 @@ def sample_codes(limit):
     return codes
 
 
-def collect_samples(codes, start, end, index_ret, label_gap, verbose=True):
+def collect_samples(codes, start, end, index_ret, index_ma5_up, label_gap, verbose=True):
     rows = []
     t0 = time.time()
     n_valid = 0
@@ -109,14 +113,14 @@ def collect_samples(codes, start, end, index_ret, label_gap, verbose=True):
             if df is None:
                 continue
             n_valid += 1
-            _append_rows(code, df, industry, start, end, index_ret, label_gap, rows)
+            _append_rows(code, df, industry, start, end, index_ret, index_ma5_up, label_gap, rows)
             if verbose and done % 50 == 0:
                 el = time.time() - t0
                 print(f"[train] {done}/{len(codes)} 有效 {n_valid} 只 | 样本 {len(rows)} | 已用 {el:.0f}s", flush=True)
     return rows, n_valid
 
 
-def _append_rows(code, df, industry, start, end, index_ret, label_gap, rows):
+def _append_rows(code, df, industry, start, end, index_ret, index_ma5_up, label_gap, rows):
     for j in range(len(df) - 1):
         r = df.iloc[j]
         nxt = df.iloc[j + 1]
@@ -133,7 +137,8 @@ def _append_rows(code, df, industry, start, end, index_ret, label_gap, rows):
         feats = {}
         bad = False
         for name in MODEL_FEATURES:
-            if name in ("industry_zt_count", "index_ret_prev", "industry_mean_prev"):
+            if name in ("industry_zt_count", "index_ret_prev", "industry_mean_prev",
+                        "index_ma5_up", "industry_rank_prev"):
                 feats[name] = 0.0
                 continue
             if name == "industry_zt_count":
@@ -152,6 +157,7 @@ def _append_rows(code, df, industry, start, end, index_ret, label_gap, rows):
         if bad:
             continue
         feats["index_ret_prev"] = index_ret.get(date, 0.0)
+        feats["index_ma5_up"] = index_ma5_up.get(date, 0.0)
         label = 1 if float(nxt["open"]) >= price * (1 + label_gap) else 0
         rows.append({"date": date, "code": code, "industry": industry,
                      **feats, "label": label})
@@ -270,16 +276,24 @@ def train_model(args):
 
     idx_rows = server._klines("1.000001", 101, 800)
     index_ret = {}
+    index_ma5_up = {}
     prev_close = None
+    closes = []
+    dates = []
     for r in idx_rows:
         date = str(r["date"])[:10]
         close = float(r["close"])
         if prev_close:
             index_ret[date] = close / prev_close - 1
+        closes.append(close)
+        dates.append(date)
+        if len(closes) >= 5:
+            ma5 = sum(closes[-5:]) / 5
+            index_ma5_up[date] = 1.0 if close > ma5 else 0.0
         prev_close = close
 
     rows, n_valid = collect_samples(
-        codes, args.start, args.end, index_ret, args.label_gap)
+        codes, args.start, args.end, index_ret, index_ma5_up, args.label_gap)
     if not rows:
         print("no samples")
         return None
@@ -297,6 +311,12 @@ def train_model(args):
             print(f"[train] outcomes appended {len(added)} -> {len(df)}", flush=True)
 
     df["industry_mean_prev"] = df.groupby(["date", "industry"])["pct_chg"].transform("mean")
+    industry_ret = df.groupby(["date", "industry"])["pct_chg"].mean().reset_index()
+    industry_ret["rank_val"] = industry_ret.groupby("date")["pct_chg"].rank(pct=True)
+    df = df.merge(industry_ret[["date", "industry", "rank_val"]],
+                  on=["date", "industry"], how="left")
+    df["industry_rank_prev"] = df["rank_val"].fillna(0).astype(float)
+    df = df.drop(columns=["rank_val"])
 
     if not args.no_zt_heat:
         heat = load_zt_heat(df["date"].unique())

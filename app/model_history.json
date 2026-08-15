@@ -63,5 +63,18 @@
       "test_top3": 0.4054,
       "test_top10": 0.527
     }
+  },
+  {
+    "ts": "2026-08-15 14:39:22",
+    "action": "publish",
+    "reason": "v5 all-indicators improved",
+    "new_hash": "54950c56c0ad",
+    "metrics": {
+      "base_rate": 0.0127,
+      "test_auc": 0.7602,
+      "test_top1": 0.2297,
+      "test_top3": 0.3649,
+      "test_top10": 0.5405
+    }
   }
 ]

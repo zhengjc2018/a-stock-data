@@ -58,6 +58,12 @@ HISTORY_BARS = 150
 MIN_HISTORY_BARS = 65
 CACHE_TTL = 600
 TOP_N = 50
+EXTRA_FEATURES = [
+    "macd_dif", "macd_dea", "macd_hist", "macd_gold", "macd_dif_pos",
+    "kdj_k", "kdj_d", "kdj_j", "kdj_gold", "rsi6", "bias5", "bias10",
+    "bias20", "roc10", "boll_pos", "boll_width", "ma_bull", "atr14",
+    "vol_shrink", "hammer", "long_upper", "engulfing", "gap_up_20",
+]
 
 _GAP_CACHE = {"ts": 0, "data": None, "computing": False, "last_err": None}
 _GAP_LOCK = threading.Lock()
@@ -289,6 +295,80 @@ def _add_features(df: pd.DataFrame) -> pd.DataFrame:
     out["vol_20"] = out["close"].pct_change().rolling(20).std()
     out["gap_count_20"] = (out["open"] / prev_close - 1 > 0.005).rolling(20).sum()
     out["up_days_5"] = (out["close"] > prev_close).rolling(5).sum()
+    ma5 = out["close"].rolling(5).mean()
+    ma10 = out["close"].rolling(10).mean()
+    ma20 = out["close"].rolling(20).mean()
+    vol_ma20 = out["volume"].rolling(20).mean()
+    prev_high20 = out["high"].rolling(20).max().shift(1)
+    prev_high10 = out["high"].rolling(10).max().shift(1)
+    recent_low5 = out["low"].rolling(5).min()
+    out["vol_breakout"] = (
+        (out["close"] >= prev_high20 * 0.995) & (out["volume"] > vol_ma20 * 1.5)
+    ).astype(int)
+    out["duck_head"] = (
+        (ma5 > ma10) & (ma10 > ma20) & (out["close"] > ma20) &
+        (recent_low5 > ma20 * 0.97) &
+        (out["close"] >= prev_high10 * 0.99) &
+        (out["volume"] > vol_ma20 * 1.2) & (out["pct_chg"] > 0)
+    ).astype(int)
+    close = out["close"]
+    high = out["high"]
+    low = out["low"]
+    open_ = out["open"]
+    volume = out["volume"]
+    ema12 = close.ewm(span=12, adjust=False).mean()
+    ema26 = close.ewm(span=26, adjust=False).mean()
+    dif = ema12 - ema26
+    dea = dif.ewm(span=9, adjust=False).mean()
+    out["macd_dif"] = dif
+    out["macd_dea"] = dea
+    out["macd_hist"] = (dif - dea) * 2
+    out["macd_gold"] = ((dif > dea) & (dif.shift(1) <= dea.shift(1))).astype(int)
+    out["macd_dif_pos"] = (dif > 0).astype(int)
+    low9 = low.rolling(9).min()
+    high9 = high.rolling(9).max()
+    rsv = (close - low9) / (high9 - low9).replace(0, np.nan) * 100
+    k = rsv.ewm(alpha=1 / 3, adjust=False).mean()
+    d = k.ewm(alpha=1 / 3, adjust=False).mean()
+    j = 3 * k - 2 * d
+    out["kdj_k"] = k
+    out["kdj_d"] = d
+    out["kdj_j"] = j
+    out["kdj_gold"] = ((k > d) & (k.shift(1) <= d.shift(1))).astype(int)
+    delta6 = close.diff()
+    gain6 = delta6.clip(lower=0).rolling(6).mean()
+    loss6 = (-delta6.clip(upper=0)).rolling(6).mean()
+    out["rsi6"] = 100 - 100 / (1 + gain6 / loss6.replace(0, np.nan))
+    out["bias5"] = close / ma5 - 1
+    out["bias10"] = close / ma10 - 1
+    out["bias20"] = close / ma20 - 1
+    out["roc10"] = close / close.shift(10) - 1
+    out["upper"] = ma20 + 2 * close.rolling(20).std()
+    out["lower"] = ma20 - 2 * close.rolling(20).std()
+    boll_pos = (close - out["lower"]) / (out["upper"] - out["lower"])
+    boll_width = (out["upper"] - out["lower"]) / ma20
+    out["boll_pos"] = boll_pos
+    out["boll_width"] = boll_width
+    ma60 = close.rolling(60).mean()
+    out["ma_bull"] = ((ma5 > ma10) & (ma10 > ma20) & (ma20 > ma60)).astype(int)
+    tr = pd.concat([
+        high - low,
+        (high - prev_close).abs(),
+        (low - prev_close).abs(),
+    ], axis=1).max(axis=1)
+    out["atr14"] = tr.rolling(14).mean() / close
+    out["vol_shrink"] = (volume < vol_ma20 * 0.8).astype(int)
+    body = close - open_
+    upper_shadow = high - np.maximum(close, open_)
+    lower_shadow = np.minimum(close, open_) - low
+    out["hammer"] = ((lower_shadow > 2 * np.abs(body)) & (upper_shadow < lower_shadow)).astype(int)
+    out["long_upper"] = (upper_shadow > 2 * np.abs(body)).astype(int)
+    prev_open = open_.shift(1)
+    out["engulfing"] = (
+        (close > open_) & (prev_close < prev_open) &
+        (close >= prev_open) & (open_ <= prev_close)
+    ).astype(int)
+    out["gap_up_20"] = ((open_ / prev_close - 1) > 0.01).rolling(20).sum()
     return out
 
 
@@ -346,9 +426,12 @@ def build_candidates(
     scope: dict | None = None,
     index_ret_prev: float = 0.0,
     industry_mean_map: dict | None = None,
+    index_ma5_up: float = 0.0,
+    industry_rank_map: dict | None = None,
 ) -> list[dict]:
     scope = scope or {}
     industry_mean_map = industry_mean_map or {}
+    industry_rank_map = industry_rank_map or {}
     total = len(snapshot_df)
     progress = {"done": 0}
     progress_lock = threading.Lock()
@@ -424,7 +507,13 @@ def build_candidates(
                 "industry_zt_count": 0,
                 "index_ret_prev": index_ret_prev,
                 "industry_mean_prev": 0,
+                "vol_breakout": int(_to_float(last.get("vol_breakout"), 0)),
+                "duck_head": int(_to_float(last.get("duck_head"), 0)),
+                "index_ma5_up": index_ma5_up,
+                "industry_rank_prev": 0,
             }
+            for _f in EXTRA_FEATURES:
+                features[_f] = _to_float(last.get(_f), None)
             if any(v is None or pd.isna(v) for v in features.values()):
                 return None
             return {
@@ -456,6 +545,7 @@ def build_candidates(
         candidate["industry_limit_count"] = int(heat.get(candidate["industry"], 0))
         candidate["industry_zt_count"] = candidate["industry_limit_count"]
         candidate["industry_mean_prev"] = float(industry_mean_map.get(candidate["industry"], 0.0))
+        candidate["industry_rank_prev"] = float(industry_rank_map.get(candidate["industry"], 0.0))
     return out
 
 
@@ -548,13 +638,20 @@ def _compute(scope=None):
         snapshot_df.assign(industry=snapshot_df["industry"].fillna("未知行业"))
         .groupby("industry")["pct_chg"].mean().to_dict()
     )
+    industry_rank_map = (
+        pd.Series(industry_mean_map).rank(pct=True).to_dict()
+    )
     idx_rows = server._klines("1.000001", 101, 5)
     index_ret_prev = 0.0
+    index_ma5_up = 0.0
     if len(idx_rows) >= 2:
         c1 = float(idx_rows[-2]["close"])
         c2 = float(idx_rows[-1]["close"])
         if c1:
             index_ret_prev = c2 / c1 - 1
+    if len(idx_rows) >= 5:
+        closes = [float(r["close"]) for r in idx_rows[-5:]]
+        index_ma5_up = 1.0 if closes[-1] > sum(closes) / len(closes) else 0.0
     print(f"[gap_pick] 交易权限范围内 {len(scoped_df)} 行", flush=True)
     # 涨停池接口失败时，用快照中涨幅 >=9.8% 的票近似补行业热度，不阻塞主流程。
     if zt_df.empty:
@@ -565,7 +662,8 @@ def _compute(scope=None):
             approx["所属行业"] = approx["代码"].map(_stock_industry).fillna("未知行业")
             zt_df = approx[["代码", "名称", "涨跌幅", "连板数", "所属行业"]]
     candidates = build_candidates(
-        scoped_df, zt_df, trade_date, scope, index_ret_prev, industry_mean_map)
+        scoped_df, zt_df, trade_date, scope,
+        index_ret_prev, industry_mean_map, index_ma5_up, industry_rank_map)
     print(f"[gap_pick] 硬过滤后候选 {len(candidates)} 只，开始评分", flush=True)
     scored = score_candidates(candidates)
     ranking = "model" if any(pd.notna(c.get("prob")) for c in scored) else "rule"

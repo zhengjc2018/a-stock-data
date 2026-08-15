@@ -293,7 +293,7 @@ function renderGap(payload) {
   const mm = (payload.model && payload.model.metrics) || {};
   const top10 = mm.test_top10 ? `测试Top10命中 ${(mm.test_top10 * 100).toFixed(1)}%` : "";
   meta.textContent = `${data.date} · 仅主板 · GBDT校准 · ${ranking} · 候选 ${data.total} 只 · ${top10} · 耗时 ${data.elapsed_sec}s`;
-  const top = data.candidates.slice(0, 5);
+  const top = data.candidates.slice(0, 3);
   box.innerHTML = table([
     { key: "rank", label: "#", align: "left", raw: true, format: (v, r) => `<b>${r._i + 1}</b>` },
     { key: "code", label: "代码", align: "left" },
@@ -615,6 +615,29 @@ async function postT(url, body) {
   }
 }
 
+async function loadPremarket() {
+  const box = $("premarket");
+  box.innerHTML = '<div class="empty">正在获取竞价数据...</div>';
+  try {
+    const d = await (await fetch("/api/gap/premarket")).json();
+    if (d.status !== "ok") {
+      box.innerHTML = `<div class="empty">${esc(d.msg || d.status)}</div>`;
+      return;
+    }
+    box.innerHTML = table([
+      { key: "code", label: "代码", align: "left" },
+      { key: "name", label: "名称", align: "left" },
+      { key: "open", label: "竞价开盘", format: (v) => fmt(v) },
+      { key: "gap_pct", label: "高开", format: (v) => signed(v) + "%", cls: (v) => cls(v) },
+      { key: "auction_ratio", label: "竞价量比", format: (v) => v ? fmt(v, 2) : "--" },
+      { key: "status", label: "确认", format: (v) => v },
+      { key: "confirmed_prob", label: "确认概率", format: (v) => (v * 100).toFixed(1) + "%" },
+    ], d.confirmed || []);
+  } catch (e) {
+    box.innerHTML = '<div class="empty">获取失败</div>';
+  }
+}
+
 const VIEW_LOADERS = {
   overview: loadOverview,
   pools: loadPools,
@@ -680,6 +703,7 @@ $("stock-code").addEventListener("keydown", (e) => { if (e.key === "Enter") load
 $("option-load").addEventListener("click", loadOptions);
 $("retrain-btn").addEventListener("click", triggerRetrain);
 $("gap-run").addEventListener("click", () => loadGap(true));
+$("gap-premarket").addEventListener("click", loadPremarket);
 $("t-add").addEventListener("click", () => postT("/api/t/holdings", {
   code: $("t-code").value.trim(),
   name: $("t-name").value.trim(),

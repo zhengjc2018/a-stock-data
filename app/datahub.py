@@ -313,6 +313,7 @@ def tencent_quote(codes):
             "price": _f(3),
             "last_close": _f(4),
             "open": _f(5),
+            "volume": _f(6),
             "change_pct": _f(32),
             "high": _f(33),
             "low": _f(34),

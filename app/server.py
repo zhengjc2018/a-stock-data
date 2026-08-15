@@ -123,6 +123,68 @@ def api_gap_refresh():
     return jsonify({"started": started, "computing": gap_pick.is_computing()})
 
 
+@app.route("/api/gap/premarket")
+def api_gap_premarket():
+    now = datetime.now(timezone(timedelta(hours=8)))
+    if now.hour < 9 or (now.hour == 9 and now.minute < 25):
+        return jsonify({"status": "before_auction",
+                        "msg": "竞价未开始，9:25 后可用"})
+    if now.hour >= 10:
+        return jsonify({"status": "after_auction",
+                        "msg": "已过竞价时段（9:25-10:00 可用）"})
+    data = gap_pick.get_cache(GAP_SCOPE, trigger=False)
+    if not data or not data.get("candidates"):
+        return jsonify({"status": "no_data", "msg": "请先点击「立即计算」生成候选"})
+    cands = data["candidates"][:10]
+    quotes = datahub.tencent_quote([c["code"] for c in cands])
+    confirmed = []
+    for c in cands:
+        q = quotes.get(c["code"]) or {}
+        open_ = q.get("open") or 0
+        prev = c.get("price") or q.get("last_close") or 0
+        if not open_ or not prev:
+            continue
+        gap_pct = (open_ / prev - 1) * 100
+        vol = q.get("volume") or 0
+        prev_day_vol = 0
+        secid = f"{'1' if c['code'].startswith('6') else '0'}.{c['code']}"
+        try:
+            bars = datahub._klines(secid, 101, 5)
+            if bars:
+                prev_day_vol = float(bars[-1].get("vol") or 0)
+        except Exception:
+            pass
+        auction_ratio = vol / (prev_day_vol / 48) if prev_day_vol else None
+        base = c.get("enhanced_prob") or c.get("prob") or 0
+        boost = 0.0
+        status = "保留"
+        if 0.5 <= gap_pct <= 5:
+            boost += 0.02
+        elif gap_pct > 7:
+            boost -= 0.05
+            status = "降级"
+        elif gap_pct < 0.5:
+            boost -= 0.03
+            status = "降级"
+        if auction_ratio is not None and auction_ratio > 1.2:
+            boost += 0.01
+        confirmed.append({
+            "code": c["code"],
+            "name": c.get("name", ""),
+            "open": round(open_, 3),
+            "gap_pct": round(gap_pct, 2),
+            "auction_ratio": round(auction_ratio, 2) if auction_ratio else None,
+            "status": status,
+            "confirmed_prob": round(max(min(base + boost, 1.0), 0.0), 4),
+        })
+    confirmed.sort(key=lambda x: x["confirmed_prob"], reverse=True)
+    return jsonify({
+        "status": "ok",
+        "time": now.strftime("%H:%M"),
+        "confirmed": confirmed[:3],
+    })
+
+
 @app.route("/api/pools")
 def api_pools():
     def load():

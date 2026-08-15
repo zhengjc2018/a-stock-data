@@ -603,6 +603,8 @@ def _enhance_candidates(candidates):
         fund = {}
         lhb = {}
         ann = []
+        margin = []
+        holder = []
         try:
             rows = ad.stock_fund_flow_120d(c["code"])
             if rows:
@@ -617,9 +619,26 @@ def _enhance_candidates(candidates):
             ann = ex.cninfo_announcements(c["code"], 8)
         except Exception:
             pass
+        try:
+            margin = ad.margin_trading(c["code"], 5)
+        except Exception:
+            pass
+        try:
+            holder = ad.holder_num_change(c["code"], 3)
+        except Exception:
+            pass
         main_net_yi = float(fund.get("main_net") or 0) / 1e8
         lhb_count = len((lhb or {}).get("records") or [])
         lhb_inst_net = float((lhb or {}).get("institution", {}).get("net_amt") or 0)
+        margin_chg = 0.0
+        if len(margin) >= 2:
+            prev_bal = float(margin[1].get("rzrqye") or 0)
+            cur_bal = float(margin[0].get("rzrqye") or 0)
+            if prev_bal:
+                margin_chg = cur_bal / prev_bal - 1
+        holder_chg = 0.0
+        if holder:
+            holder_chg = float(holder[0].get("change_ratio") or 0)
         hot_rank = hot.get(str(c["code"]))
         event_flag = 0
         event_note = ""
@@ -645,8 +664,18 @@ def _enhance_candidates(candidates):
             boost += 0.02
         if event_flag < 0:
             boost -= 0.03
+        if margin_chg > 0.02:
+            boost += 0.01
+        elif margin_chg < -0.02:
+            boost -= 0.01
+        if holder_chg < 0:
+            boost += 0.02
+        elif holder_chg > 0.02:
+            boost -= 0.01
         c["main_net_yi"] = round(main_net_yi, 2)
         c["lhb_inst_net"] = round(lhb_inst_net, 1)
+        c["margin_chg"] = round(margin_chg, 4)
+        c["holder_chg"] = round(holder_chg, 3)
         c["hot_rank"] = hot_rank
         c["lhb_count_5"] = lhb_count
         if main_net_yi > 0.5 or lhb_inst_net > 0:

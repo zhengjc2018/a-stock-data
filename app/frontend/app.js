@@ -643,9 +643,11 @@ async function loadTailState() {
     const d = await (await fetch("/api/tail/state")).json();
     const s = d.stats || {};
     const fmtRate = (v) => (v === null || v === undefined ? "--" : (v * 100).toFixed(1) + "%");
-    $("tail-status").textContent =
+    const lastMsg = (d.last_signal && d.last_signal.msg) ? `信号：${d.last_signal.msg}` : "";
+    $("tail-status").textContent = lastMsg ||
       `累计 ${s.trades || 0} 笔 · 单笔命中 ${fmtRate(s.hit_rate)} · 交易日命中 ${fmtRate(s.day_hit_rate)} · 近30天 ${fmtRate(s.recent_hit_rate)}`;
-    $("tail-candidates").innerHTML = table([
+    $("tail-candidates").innerHTML = (d.candidates && d.candidates.length)
+      ? table([
       { key: "code", label: "代码", align: "left" },
       { key: "name", label: "名称", align: "left" },
       { key: "price", label: "现价", format: (v) => fmt(v) },
@@ -654,7 +656,8 @@ async function loadTailState() {
       { key: "main_net_yi", label: "主力净额", format: (v) => fmt(v, 1) + "亿", cls: (v) => cls(v) },
       { key: "op", label: "操作", raw: true, format: (v, r) =>
         `<button data-buy="${esc(r.code)}" data-name="${esc(r.name)}" data-price="${r.price}">买入</button>` },
-    ], d.candidates || []);
+      ], d.candidates)
+      : `<div class="empty">${lastMsg ? "暂无候选：" + esc(lastMsg) : "请先生成今日信号"}</div>`;
     $("tail-candidates").querySelectorAll("[data-buy]").forEach((b) =>
       b.addEventListener("click", () => tailBuy(b.dataset.buy, b.dataset.name, parseFloat(b.dataset.price))));
     $("tail-positions").innerHTML = table([

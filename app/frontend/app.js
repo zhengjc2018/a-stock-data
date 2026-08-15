@@ -637,64 +637,6 @@ async function loadPremarket() {
   }
 }
 
-async function loadTailState() {
-  try {
-    const d = await (await fetch("/api/tail/state")).json();
-    const s = d.stats || {};
-    const fmtRate = (v) => (v === null || v === undefined ? "--" : (v * 100).toFixed(1) + "%");
-    const lastMsg = (d.last_signal && d.last_signal.msg) ? `信号：${d.last_signal.msg}` : "";
-    $("tail-status").textContent = lastMsg ||
-      `累计 ${s.trades || 0} 笔 · 单笔命中 ${fmtRate(s.hit_rate)} · 交易日命中 ${fmtRate(s.day_hit_rate)} · 近30天 ${fmtRate(s.recent_hit_rate)}`;
-    $("tail-candidates").innerHTML = (d.candidates && d.candidates.length)
-      ? table([
-      { key: "code", label: "代码", align: "left" },
-      { key: "name", label: "名称", align: "left" },
-      { key: "price", label: "现价", format: (v) => fmt(v) },
-      { key: "prob", label: "概率", format: (v) => (v * 100).toFixed(1) + "%" },
-      { key: "amount_yi", label: "成交额", format: (v) => fmt(v, 1) + "亿" },
-      { key: "op", label: "操作", raw: true, format: (v, r) =>
-        `<button data-buy="${esc(r.code)}" data-name="${esc(r.name)}" data-price="${r.price}">买入</button>` },
-      ], d.candidates)
-      : `<div class="empty">${lastMsg ? "暂无候选：" + esc(lastMsg) : "请先生成今日信号"}</div>`;
-    $("tail-candidates").querySelectorAll("[data-buy]").forEach((b) =>
-      b.addEventListener("click", () => tailBuy(b.dataset.buy, b.dataset.name, parseFloat(b.dataset.price))));
-    $("tail-positions").innerHTML = table([
-      { key: "code", label: "代码", align: "left" },
-      { key: "name", label: "名称", align: "left" },
-      { key: "entry_price", label: "买入价", format: (v) => fmt(v) },
-      { key: "entry_date", label: "买入日", align: "left" },
-    ], d.positions || []);
-    $("tail-stats").innerHTML = `<div class="summary-grid">${
-      [["累计成交", s.trades || 0], ["单笔命中率", fmtRate(s.hit_rate)],
-       ["交易日命中率", fmtRate(s.day_hit_rate)], ["近30天命中率", fmtRate(s.recent_hit_rate)]]
-        .map(([k, v]) => `<div class="summary"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("")
-    }</div>`;
-    $("tail-trades").innerHTML = table([
-      { key: "entry_date", label: "买入日", align: "left" },
-      { key: "code", label: "代码", align: "left" },
-      { key: "name", label: "名称", align: "left" },
-      { key: "entry_price", label: "买入", format: (v) => fmt(v) },
-      { key: "exit_open", label: "开盘", format: (v) => fmt(v) },
-      { key: "exit_high", label: "盘中最高", format: (v) => fmt(v) },
-      { key: "pct", label: "最高达", format: (v) => signed(v) + "%", cls: (v) => cls(v) },
-      { key: "hit", label: "命中", format: (v) => v ? "是" : "否", cls: (v) => v ? "up" : "down" },
-    ], d.trades || []);
-    if (d.signal_running) {
-      setTimeout(loadTailState, 5000);
-    }
-  } catch (e) {
-    $("tail-candidates").innerHTML = '<div class="empty">加载失败</div>';
-  }
-}
-
-async function tailBuy(code, name, price) {
-  await fetch("/api/tail/buy", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code, name, price }),
-  });
-  loadTailState();
-}
 
 const VIEW_LOADERS = {
   overview: loadOverview,
@@ -703,7 +645,6 @@ const VIEW_LOADERS = {
   hot: loadHot,
   lhb: loadLhb,
   gap: loadGap,
-  tail: loadTailState,
   do_t: loadTState,
   stock: loadStock,
   options: loadOptions,
@@ -763,14 +704,6 @@ $("option-load").addEventListener("click", loadOptions);
 $("retrain-btn").addEventListener("click", triggerRetrain);
 $("gap-run").addEventListener("click", () => loadGap(true));
 $("gap-premarket").addEventListener("click", loadPremarket);
-$("tail-signal").addEventListener("click", async () => {
-  await fetch("/api/tail/signal", { method: "POST" });
-  loadTailState();
-});
-$("tail-verify").addEventListener("click", async () => {
-  await fetch("/api/tail/verify", { method: "POST" });
-  loadTailState();
-});
 $("t-add").addEventListener("click", () => postT("/api/t/holdings", {
   code: $("t-code").value.trim(),
   name: $("t-name").value.trim(),

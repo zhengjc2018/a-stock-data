@@ -19,7 +19,6 @@ import extra_data as ex
 import gap_model
 import gap_pick
 import paths as app_paths
-import tail_gap
 
 app = Flask(__name__, static_folder="frontend", static_url_path="")
 
@@ -433,28 +432,6 @@ def api_t_check():
 @app.route("/api/search")
 def api_search():
     return jsonify(do_t.search_stocks(request.args.get("q", "")))
-
-
-@app.route("/api/tail/state")
-def api_tail_state():
-    return jsonify(tail_gap.stats())
-
-
-@app.route("/api/tail/signal", methods=["POST"])
-def api_tail_signal():
-    return jsonify(tail_gap.generate_signal())
-
-
-@app.route("/api/tail/buy", methods=["POST"])
-def api_tail_buy():
-    body = request.get_json(force=True, silent=True) or {}
-    return jsonify(tail_gap.buy(body.get("code", ""), body.get("name", ""),
-                                body.get("price", 0)))
-
-
-@app.route("/api/tail/verify", methods=["POST"])
-def api_tail_verify():
-    return jsonify(tail_gap.verify_next_day())
 
 
 def start_background():

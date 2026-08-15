@@ -68,8 +68,19 @@ def generate_signal():
     _SIGNAL["running"] = True
     state["last_signal"] = {"time": _now(), "msg": "计算中，约需几分钟"}
     save_state(state)
-    threading.Thread(target=_run_signal, daemon=True).start()
+    threading.Thread(target=_safe_run, daemon=True).start()
     return state
+
+
+def _safe_run():
+    try:
+        _run_signal()
+    except Exception as e:
+        state = load_state()
+        state["last_signal"] = {"time": _now(), "msg": f"计算失败：{e}"}
+        save_state(state)
+    finally:
+        _SIGNAL["running"] = False
 
 
 def _run_signal():

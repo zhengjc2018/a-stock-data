@@ -116,15 +116,20 @@ def run():
         "selection_top3_trend": selection,
         "t_win_trend": t,
         "t_confidence": t_confidence_analysis(),
+        "alerts": [],
     }
     if len(selection) >= 2:
         cur = selection[-1]["top3_rate"] or 0
         prev = selection[-2]["top3_rate"] or 0
         summary["selection_delta_pp"] = round((cur - prev) * 100, 2)
+        if summary["selection_delta_pp"] < -10:
+            summary["alerts"].append("选股Top3命中率较上周下降超过10个百分点")
     if len(t) >= 2:
         cur = t[-1]["win_rate"] or 0
         prev = t[-2]["win_rate"] or 0
         summary["t_delta_pp"] = round((cur - prev) * 100, 2)
+        if summary["t_delta_pp"] < -5:
+            summary["alerts"].append("做T胜率较上周下降超过5个百分点")
     out_path = paths.bundle_path("backtest_report", "trend_report.json")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:

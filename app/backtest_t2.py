@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import argparse
 import json
 import time
 
@@ -152,7 +153,7 @@ def target_stop_winrate(df, buy_idx, sell_idx, horizon=12, target=0.005, stop=0.
     return out
 
 
-def run():
+def run(score=3, horizon=12, target=0.005, stop=0.005, cost_rate=0.0012):
     idx_df = fetch_5m(INDEX)
     rows = []
     for sym, secid in STOCKS:
@@ -190,11 +191,12 @@ def run():
                 bool(r["new_high20"]) and high_vol,
                 high_rsi or near_upper,
             ])
-            if buy_score >= 3:
+            if buy_score >= score:
                 buy_idx.append(i)
-            if sell_score >= 3:
+            if sell_score >= score:
                 sell_idx.append(i)
-        res = target_stop_winrate(df, buy_idx, sell_idx)
+        res = target_stop_winrate(df, buy_idx, sell_idx, horizon=horizon,
+                                  target=target, stop=stop, cost_rate=cost_rate)
         rows.append({
             "symbol": sym,
             "bars": len(df),
@@ -205,7 +207,15 @@ def run():
 
 
 def main():
-    rows = run()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--score", type=int, default=3)
+    ap.add_argument("--horizon", type=int, default=12)
+    ap.add_argument("--target", type=float, default=0.005)
+    ap.add_argument("--stop", type=float, default=0.005)
+    ap.add_argument("--cost", type=float, default=0.0012)
+    args = ap.parse_args()
+    rows = run(score=args.score, horizon=args.horizon, target=args.target,
+               stop=args.stop, cost_rate=args.cost)
     print(f"{'symbol':<12} {'买信号':>6} {'买胜率':>8} | {'卖信号':>6} {'卖胜率':>8}")
     for r in rows:
         b, bw = r["buy"]

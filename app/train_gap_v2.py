@@ -54,6 +54,7 @@ MODEL_FEATURES = [
 
 DAILY_BARS = 800
 _SAMPLE_INDUSTRY = {}
+TRAIN_CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "train_cache")
 
 
 def fetch_daily(code):
@@ -291,6 +292,17 @@ def prepare_data(args):
     """采集并构造训练数据集，返回 DataFrame；供训练和超参搜索复用。"""
     # 批量训练/回测时跳过通达信连接池，避免间歇失败拖慢全样本采集。
     os.environ.setdefault("ASTOCK_NO_TDX", "1")
+    limit = getattr(args, "limit", 0) or 0
+    reach = bool(getattr(args, "reach", False))
+    label_gap = float(getattr(args, "label_gap", 0.03))
+    cache_path = os.path.join(
+        TRAIN_CACHE_DIR,
+        f"train_{args.start}_{args.end}_gap{label_gap}_reach{int(reach)}_n{limit}.csv",
+    )
+    if os.path.isfile(cache_path):
+        df = pd.read_csv(cache_path)
+        print(f"[train] loaded cache {cache_path} ({len(df)} rows)", flush=True)
+        return df
     if args.codes:
         codes = [c.strip().zfill(6) for c in args.codes.split(",") if c.strip()]
     else:
@@ -347,6 +359,9 @@ def prepare_data(args):
         df["industry_zt_count"] = df.apply(
             lambda r: heat.get((r["date"], r["industry"]), 0), axis=1)
         print("[train] zt heat joined", flush=True)
+    os.makedirs(TRAIN_CACHE_DIR, exist_ok=True)
+    df.to_csv(cache_path, index=False)
+    print(f"[train] cached {cache_path} ({len(df)} rows)", flush=True)
     return df
 
 

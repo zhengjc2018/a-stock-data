@@ -1,23 +1,23 @@
 {
   "code": "600519",
   "profile": {
-    "trend": "上升趋势",
+    "trend": "震荡",
     "volatility": "低波动",
-    "ret_20": 0.0765,
-    "avg_daily_amp": 0.0191,
-    "avg_bar_range": 0.00295,
-    "vol_ratio_5_20": 0.689,
-    "vwap_dev_avg": 0.0041,
-    "ma5": 1340.57,
-    "ma20": 1321.55,
-    "ma60": 1270.41
+    "ret_20": -0.0077,
+    "avg_daily_amp": 0.0187,
+    "avg_bar_range": 0.00263,
+    "vol_ratio_5_20": 0.966,
+    "vwap_dev_avg": 0.00334,
+    "ma5": 1326.27,
+    "ma20": 1323.78,
+    "ma60": 1271.18
   },
   "params": {
-    "target": 0.004,
-    "stop": 0.004,
-    "rsi_low": 35,
-    "rsi_high": 68,
-    "score": 4,
+    "target": 0.006,
+    "stop": 0.006,
+    "rsi_low": 38,
+    "rsi_high": 72,
+    "score": 3,
     "vwap_buy": 0.003,
     "vwap_sell": 0.003,
     "vol_shrink": 0.9,
@@ -26,44 +26,44 @@
   },
   "train": {
     "buy": {
-      "signals": 4,
-      "win_rate": 0.5
+      "signals": 133,
+      "win_rate": 0.5338
     },
     "sell": {
-      "signals": 15,
-      "win_rate": 0.7333
+      "signals": 101,
+      "win_rate": 0.5149
     },
     "combined": {
-      "signals": 19,
-      "win_rate": 0.6842
+      "signals": 234,
+      "win_rate": 0.5256
     }
   },
   "test": {
     "buy": {
-      "signals": 5,
-      "win_rate": 0.4
+      "signals": 53,
+      "win_rate": 0.4906
     },
     "sell": {
-      "signals": 4,
-      "win_rate": 0.25
+      "signals": 22,
+      "win_rate": 0.7273
     },
     "combined": {
-      "signals": 9,
-      "win_rate": 0.3333
+      "signals": 75,
+      "win_rate": 0.56
     }
   },
   "test_default": {
     "buy": {
-      "signals": 68,
-      "win_rate": 0.6765
+      "signals": 53,
+      "win_rate": 0.5283
     },
     "sell": {
-      "signals": 37,
-      "win_rate": 0.5135
+      "signals": 18,
+      "win_rate": 0.7222
     },
     "combined": {
-      "signals": 105,
-      "win_rate": 0.6191
+      "signals": 71,
+      "win_rate": 0.5775
     }
   },
   "improved": false

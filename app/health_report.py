@@ -88,6 +88,8 @@ def main():
         "signals": len(ledger),
         "verified": len(verified),
         "win_rate": round(wins / len(verified), 4) if verified else None,
+        "avg_net_ret": round(sum(float(s.get("ret") or 0) for s in verified) / len(verified), 4)
+        if verified else None,
     }
 
     if args.full:

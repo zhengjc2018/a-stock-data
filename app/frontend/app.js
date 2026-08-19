@@ -447,6 +447,7 @@ async function loadStrategyHealth() {
       ["真实高开基准", s.base_rate ? (s.base_rate * 100).toFixed(1) + "%" : "--"],
       ["做T信号数", ts.signals || 0],
       ["做T真实胜率", ts.verified && ts.win_rate !== null && ts.win_rate !== undefined ? (ts.win_rate * 100).toFixed(1) + "%" : "--"],
+      ["做T平均净收益", ts.verified && ts.avg_net_ret !== null && ts.avg_net_ret !== undefined ? (ts.avg_net_ret * 100).toFixed(2) + "%" : "--"],
       ["做T买/卖胜率", ts.verified ? `${ts.buy_win_rate !== null && ts.buy_win_rate !== undefined ? (ts.buy_win_rate * 100).toFixed(0) : "--"}/${ts.sell_win_rate !== null && ts.sell_win_rate !== undefined ? (ts.sell_win_rate * 100).toFixed(0) : "--"}` : "--"],
     ];
     box.innerHTML = `<div class="summary-grid">${cards.map(([k, v]) =>

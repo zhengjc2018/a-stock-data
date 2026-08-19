@@ -175,12 +175,21 @@ def t_stats():
             return None
         return round(sum(1 for x in items if x.get("outcome") == "win") / len(items), 4)
 
+    def _avg(items):
+        vals = [float(x.get("ret") or 0) for x in items]
+        if not vals:
+            return None
+        return round(sum(vals) / len(vals), 4)
+
     return {
         "signals": len(ledger),
         "verified": len(verified),
         "win_rate": _rate(verified),
         "buy_win_rate": _rate(buys),
         "sell_win_rate": _rate(sells),
+        "avg_net_ret": _avg(verified),
+        "buy_avg_net_ret": _avg(buys),
+        "sell_avg_net_ret": _avg(sells),
         "recent": verified[-20:],
     }
 

@@ -17,6 +17,7 @@ app/train_cache/
 app/backtest_report/realistic_backtest.csv
 app/backtest_report/rolling_eval.csv
 app/backtest_report/t_rolling.csv
+app/backtest_report/health_report.json
 app/tail_state.json
 app/logs/
 .playwright-cli/

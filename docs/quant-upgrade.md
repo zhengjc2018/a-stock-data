@@ -65,4 +65,6 @@ cd app
 .venv/bin/python realistic_backtest.py --limit 500
 .venv/bin/python rolling_eval.py --limit 300 --step 30 --horizon 30
 .venv/bin/python auto_train.py --model both
+.venv/bin/python health_report.py            # 当前健康快照
+.venv/bin/python health_report.py --full     # 额外跑完整回测
 ```

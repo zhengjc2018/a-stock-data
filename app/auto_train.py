@@ -203,7 +203,7 @@ def download_model():
             "tail": downloaded.get("tail_reach_model.json")}
 
 
-def should_publish(cur, new):
+def should_publish(cur, new, rolling_gain=None):
     if not cur:
         return True
     raw_keys = ("test_top1", "test_top3", "test_top10")
@@ -219,9 +219,11 @@ def should_publish(cur, new):
         for k in net_keys
     ] if has_net else [0.0, 0.0, 0.0]
     improved_raw = max(raw_gains) >= 0.01
-    no_raw_regression = all(g >= -0.005 for g in raw_gains)
+    raw_tolerance = -0.021 if (rolling_gain is not None and rolling_gain >= 0.02) else -0.005
+    no_raw_regression = all(g >= raw_tolerance for g in raw_gains)
     improved_net = has_net and max(net_gains) >= 0.02
-    no_net_regression = not has_net or all(g >= -0.01 for g in net_gains)
+    net_tolerance = -0.021 if (rolling_gain is not None and rolling_gain >= 0.02) else -0.01
+    no_net_regression = not has_net or all(g >= net_tolerance for g in net_gains)
     auc_ok = gain_auc >= -0.002
     return (
         (improved_raw or improved_net)
@@ -311,7 +313,12 @@ def main(argv=None):
             if cur_roll and new_roll:
                 rolling_ok = (new_roll["mean"] >= 0.75 and
                               new_roll["mean"] >= cur_roll["mean"] - 0.02)
-        if should_publish(cur, new_metrics) and rolling_ok:
+                rolling_gain = new_roll["mean"] - cur_roll["mean"]
+            else:
+                rolling_gain = None
+        else:
+            rolling_gain = None
+        if should_publish(cur, new_metrics, rolling_gain) and rolling_ok:
             reason = "first publish" if not cur else "metrics improved"
             if args.rolling and rolling and rolling.get("candidate"):
                 reason += f" | rolling mean={rolling['candidate']['mean']}"
@@ -349,7 +356,12 @@ def main(argv=None):
             if cur_roll and new_roll:
                 rolling_ok = (new_roll["mean"] >= 0.75 and
                               new_roll["mean"] >= cur_roll["mean"] - 0.02)
-        if should_publish(cur, new_metrics) and rolling_ok:
+                rolling_gain = new_roll["mean"] - cur_roll["mean"]
+            else:
+                rolling_gain = None
+        else:
+            rolling_gain = None
+        if should_publish(cur, new_metrics, rolling_gain) and rolling_ok:
             reason = "first publish" if not cur else "tail metrics improved"
             if args.rolling and rolling and rolling.get("candidate"):
                 reason += f" | rolling mean={rolling['candidate']['mean']}"

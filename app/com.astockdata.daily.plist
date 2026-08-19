@@ -26,6 +26,12 @@
             <key>Minute</key>
             <integer>10</integer>
         </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>15</integer>
+            <key>Minute</key>
+            <integer>30</integer>
+        </dict>
     </array>
     <key>StandardOutPath</key>
     <string>/Users/jojo/code/a-stock-data/app/logs/daily_loop.log</string>

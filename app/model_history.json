@@ -126,5 +126,41 @@
       "test_top3": 0.2568,
       "test_top10": 0.4865
     }
+  },
+  {
+    "ts": "2026-08-16 19:14:16",
+    "action": "reject",
+    "reason": "not better than current model",
+    "metrics": {
+      "base_rate": 0.0124,
+      "test_auc": 0.7521,
+      "test_top1": 0.1081,
+      "test_top3": 0.2568,
+      "test_top10": 0.4865
+    }
+  },
+  {
+    "ts": "2026-08-18 16:06:28",
+    "action": "reject",
+    "reason": "not better than current model",
+    "metrics": {
+      "base_rate": 0.0121,
+      "test_auc": 0.7558,
+      "test_top1": 0.12,
+      "test_top3": 0.2533,
+      "test_top10": 0.48
+    }
+  },
+  {
+    "ts": "2026-08-18 22:07:42",
+    "action": "reject",
+    "reason": "not better than current model",
+    "metrics": {
+      "base_rate": 0.0111,
+      "test_auc": 0.733,
+      "test_top1": 0.08,
+      "test_top3": 0.2667,
+      "test_top10": 0.4533
+    }
   }
 ]

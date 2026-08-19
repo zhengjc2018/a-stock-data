@@ -1,0 +1,357 @@
+{
+  "date": "2026-08-15",
+  "market_date": "2026-08-17",
+  "verified_at": "2026-08-17 09:58:57",
+  "results": [
+    {
+      "code": "002396",
+      "name": "星网锐捷",
+      "open": 33.71,
+      "pct": 3.18,
+      "hit": true
+    },
+    {
+      "code": "603897",
+      "name": "长城科技",
+      "open": 31.42,
+      "pct": -1.81,
+      "hit": false
+    },
+    {
+      "code": "601026",
+      "name": "道生天合",
+      "open": 17.0,
+      "pct": -2.02,
+      "hit": false
+    },
+    {
+      "code": "600572",
+      "name": "康恩贝",
+      "open": 4.73,
+      "pct": -1.46,
+      "hit": false
+    },
+    {
+      "code": "002706",
+      "name": "良信股份",
+      "open": 10.02,
+      "pct": 0.1,
+      "hit": false
+    },
+    {
+      "code": "601666",
+      "name": "平煤股份",
+      "open": 9.5,
+      "pct": -0.94,
+      "hit": false
+    },
+    {
+      "code": "600985",
+      "name": "淮北矿业",
+      "open": 17.2,
+      "pct": -0.81,
+      "hit": false
+    },
+    {
+      "code": "002301",
+      "name": "齐心集团",
+      "open": 7.84,
+      "pct": 0.0,
+      "hit": false
+    },
+    {
+      "code": "603439",
+      "name": "三力制药",
+      "open": 13.5,
+      "pct": -0.22,
+      "hit": false
+    },
+    {
+      "code": "603903",
+      "name": "中持股份",
+      "open": 14.12,
+      "pct": 0.0,
+      "hit": false
+    },
+    {
+      "code": "002674",
+      "name": "兴业科技",
+      "open": 30.95,
+      "pct": 4.49,
+      "hit": true
+    },
+    {
+      "code": "600522",
+      "name": "中天科技",
+      "open": 35.59,
+      "pct": 0.11,
+      "hit": false
+    },
+    {
+      "code": "002708",
+      "name": "光洋股份",
+      "open": 11.9,
+      "pct": 0.68,
+      "hit": false
+    },
+    {
+      "code": "000823",
+      "name": "超声电子",
+      "open": 15.3,
+      "pct": 0.0,
+      "hit": false
+    },
+    {
+      "code": "600768",
+      "name": "宁波富邦",
+      "open": 15.8,
+      "pct": -0.13,
+      "hit": false
+    },
+    {
+      "code": "603998",
+      "name": "方盛制药",
+      "open": 10.81,
+      "pct": 0.28,
+      "hit": false
+    },
+    {
+      "code": "000973",
+      "name": "佛塑科技",
+      "open": 14.29,
+      "pct": 0.14,
+      "hit": false
+    },
+    {
+      "code": "600366",
+      "name": "宁波韵升",
+      "open": 12.64,
+      "pct": 0.0,
+      "hit": false
+    },
+    {
+      "code": "003013",
+      "name": "地铁设计",
+      "open": 19.12,
+      "pct": 1.81,
+      "hit": true
+    },
+    {
+      "code": "002240",
+      "name": "盛新锂能",
+      "open": 34.16,
+      "pct": 0.8,
+      "hit": false
+    },
+    {
+      "code": "603979",
+      "name": "金诚信",
+      "open": 78.12,
+      "pct": 1.92,
+      "hit": true
+    },
+    {
+      "code": "000739",
+      "name": "普洛药业",
+      "open": 22.35,
+      "pct": -0.89,
+      "hit": false
+    },
+    {
+      "code": "600475",
+      "name": "华光环能",
+      "open": 15.05,
+      "pct": 0.4,
+      "hit": false
+    },
+    {
+      "code": "603456",
+      "name": "九洲药业",
+      "open": 17.44,
+      "pct": -0.46,
+      "hit": false
+    },
+    {
+      "code": "001210",
+      "name": "金房能源",
+      "open": 23.96,
+      "pct": -0.33,
+      "hit": false
+    },
+    {
+      "code": "002824",
+      "name": "和胜股份",
+      "open": 25.1,
+      "pct": 0.56,
+      "hit": false
+    },
+    {
+      "code": "603931",
+      "name": "格林达",
+      "open": 39.35,
+      "pct": 0.0,
+      "hit": false
+    },
+    {
+      "code": "603283",
+      "name": "赛腾股份",
+      "open": 48.09,
+      "pct": -0.33,
+      "hit": false
+    },
+    {
+      "code": "000967",
+      "name": "盈峰环境",
+      "open": 9.39,
+      "pct": -0.84,
+      "hit": false
+    },
+    {
+      "code": "605589",
+      "name": "圣泉集团",
+      "open": 41.54,
+      "pct": -2.21,
+      "hit": false
+    },
+    {
+      "code": "603790",
+      "name": "雅运股份",
+      "open": 25.39,
+      "pct": -1.28,
+      "hit": false
+    },
+    {
+      "code": "603217",
+      "name": "元利科技",
+      "open": 25.99,
+      "pct": 0.58,
+      "hit": false
+    },
+    {
+      "code": "603985",
+      "name": "恒润股份",
+      "open": 18.1,
+      "pct": 0.06,
+      "hit": false
+    },
+    {
+      "code": "603353",
+      "name": "和顺石油",
+      "open": 31.61,
+      "pct": 0.0,
+      "hit": false
+    },
+    {
+      "code": "002446",
+      "name": "盛路通信",
+      "open": 9.06,
+      "pct": -0.55,
+      "hit": false
+    },
+    {
+      "code": "603373",
+      "name": "安邦护卫",
+      "open": 40.68,
+      "pct": -1.05,
+      "hit": false
+    },
+    {
+      "code": "002580",
+      "name": "圣阳股份",
+      "open": 21.81,
+      "pct": -2.11,
+      "hit": false
+    },
+    {
+      "code": "603284",
+      "name": "林平发展",
+      "open": 44.39,
+      "pct": 0.0,
+      "hit": false
+    },
+    {
+      "code": "603466",
+      "name": "风语筑",
+      "open": 12.82,
+      "pct": 1.99,
+      "hit": true
+    },
+    {
+      "code": "603158",
+      "name": "腾龙股份",
+      "open": 10.75,
+      "pct": -0.09,
+      "hit": false
+    },
+    {
+      "code": "603538",
+      "name": "美诺华",
+      "open": 30.48,
+      "pct": 0.89,
+      "hit": false
+    },
+    {
+      "code": "601700",
+      "name": "风范股份",
+      "open": 6.64,
+      "pct": 1.22,
+      "hit": true
+    },
+    {
+      "code": "603137",
+      "name": "恒尚节能",
+      "open": 25.45,
+      "pct": -2.42,
+      "hit": false
+    },
+    {
+      "code": "603758",
+      "name": "秦安股份",
+      "open": 12.99,
+      "pct": -6.01,
+      "hit": false
+    },
+    {
+      "code": "600641",
+      "name": "先导基电",
+      "open": 34.56,
+      "pct": 1.05,
+      "hit": true
+    },
+    {
+      "code": "001311",
+      "name": "多利科技",
+      "open": 18.61,
+      "pct": 2.31,
+      "hit": true
+    },
+    {
+      "code": "603012",
+      "name": "创力集团",
+      "open": 9.66,
+      "pct": 2.44,
+      "hit": true
+    },
+    {
+      "code": "603087",
+      "name": "甘李药业",
+      "open": 74.03,
+      "pct": -1.27,
+      "hit": false
+    },
+    {
+      "code": "600129",
+      "name": "太极集团",
+      "open": 16.98,
+      "pct": -0.24,
+      "hit": false
+    },
+    {
+      "code": "603995",
+      "name": "甬金股份",
+      "open": 24.97,
+      "pct": 0.81,
+      "hit": false
+    }
+  ]
+}

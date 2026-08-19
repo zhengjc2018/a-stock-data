@@ -1,0 +1,70 @@
+{
+  "code": "002580",
+  "profile": {
+    "trend": "震荡",
+    "volatility": "高波动",
+    "ret_20": 0.2937,
+    "avg_daily_amp": 0.0707,
+    "avg_bar_range": 0.00939,
+    "vol_ratio_5_20": 1.241,
+    "vwap_dev_avg": 0.01247,
+    "ma5": 21.52,
+    "ma20": 19.21,
+    "ma60": 20.3
+  },
+  "params": {
+    "target": 0.004,
+    "stop": 0.004,
+    "rsi_low": 35,
+    "rsi_high": 68,
+    "score": 3,
+    "vwap_buy": 0.003,
+    "vwap_sell": 0.003,
+    "vol_shrink": 0.9,
+    "vol_expand": 1.4,
+    "horizon": 12
+  },
+  "train": {
+    "buy": {
+      "signals": 11,
+      "win_rate": 0.4545
+    },
+    "sell": {
+      "signals": 9,
+      "win_rate": 0.6667
+    },
+    "combined": {
+      "signals": 20,
+      "win_rate": 0.55
+    }
+  },
+  "test": {
+    "buy": {
+      "signals": 1,
+      "win_rate": 1.0
+    },
+    "sell": {
+      "signals": 0,
+      "win_rate": null
+    },
+    "combined": {
+      "signals": 1,
+      "win_rate": 1.0
+    }
+  },
+  "test_default": {
+    "buy": {
+      "signals": 2,
+      "win_rate": 0.5
+    },
+    "sell": {
+      "signals": 0,
+      "win_rate": null
+    },
+    "combined": {
+      "signals": 2,
+      "win_rate": 0.5
+    }
+  },
+  "improved": true
+}

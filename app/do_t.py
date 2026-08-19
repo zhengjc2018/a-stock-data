@@ -59,14 +59,15 @@ def save_state(state):
             json.dump(state, f, ensure_ascii=False, indent=2)
 
 
-def _bars_cache(symbol):
+def _bars_cache(symbol, scale=1):
     now = time.time()
     if now - _CACHE["bars"]["ts"] > 60:
         _CACHE["bars"] = {"ts": now, "data": {}}
     cache = _CACHE["bars"]["data"]
-    if symbol not in cache:
-        cache[symbol] = t_strategy.fetch_kline(symbol, 5, 120)
-    return cache[symbol]
+    key = f"{symbol}:{scale}"
+    if key not in cache:
+        cache[key] = t_strategy.fetch_kline(symbol, scale, 240 if scale == 1 else 120)
+    return cache[key]
 
 
 def _fund_cache(secid):
@@ -160,10 +161,10 @@ def ensure_analysis(state=None):
 
 def _compute_signal(code, name, cost, qty):
     symbol, secid = _symbol_secid(code)
-    bars = _bars_cache(symbol)
+    bars = _bars_cache(symbol, 1)
     if bars.empty or len(bars) < 60:
         return None
-    idx = _bars_cache("sh000001")
+    idx = _bars_cache("sh000001", 1)
     fund = _fund_cache(secid)
     df = t_strategy.add_signals_features(bars, fund)
     df["main_net_prev"] = df["main_net_prev"].fillna(0)

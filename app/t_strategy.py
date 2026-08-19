@@ -320,7 +320,14 @@ def quick_profile(code, symbol, secid):
     return profile_stock(daily, df)
 
 
-def optimize_code(code, symbol, secid, out_dir):
+def save_params(payload, out_dir):
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, f"t_params_{payload['code']}.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+
+
+def optimize_code(code, symbol, secid, out_dir, write=True):
     intraday = fetch_kline(symbol, 5, 1023)
     daily = fetch_kline(symbol, 240, 120)
     if intraday.empty or daily.empty or len(intraday) < 120:
@@ -376,10 +383,8 @@ def optimize_code(code, symbol, secid, out_dir):
             (default_summary["combined"]["win_rate"] or 0)
         ),
     }
-    os.makedirs(out_dir, exist_ok=True)
-    path = os.path.join(out_dir, f"t_params_{code}.json")
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
+    if write:
+        save_params(payload, out_dir)
     print(f"[t] {code} {profile['trend']} {profile['volatility']} "
           f"opt {test_summary['combined']['win_rate']} vs default "
           f"{default_summary['combined']['win_rate']}", flush=True)

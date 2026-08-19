@@ -36,15 +36,18 @@ def run(force=False):
                 continue
         symbol, secid = do_t._symbol_secid(code)
         try:
-            payload = t_strategy.optimize_code(code, symbol, secid, out_dir)
+            payload = t_strategy.optimize_code(code, symbol, secid, out_dir, write=False)
             if payload:
-                updated += 1
+                if payload.get("improved"):
+                    t_strategy.save_params(payload, out_dir)
+                    updated += 1
                 results.append({
                     "code": code,
                     "skipped": False,
                     "trend": payload.get("profile", {}).get("trend"),
                     "volatility": payload.get("profile", {}).get("volatility"),
                     "improved": payload.get("improved"),
+                    "saved": bool(payload.get("improved")),
                 })
             else:
                 results.append({"code": code, "skipped": False, "error": "no payload"})

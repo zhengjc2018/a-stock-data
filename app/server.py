@@ -19,6 +19,7 @@ import extra_data as ex
 import gap_model
 import gap_pick
 import paths as app_paths
+import portfolio
 
 app = Flask(__name__, static_folder="frontend", static_url_path="")
 
@@ -496,6 +497,17 @@ def api_t_check():
 @app.route("/api/search")
 def api_search():
     return jsonify(do_t.search_stocks(request.args.get("q", "")))
+
+
+@app.route("/api/portfolio")
+def api_portfolio():
+    return jsonify(portfolio.compute())
+
+
+@app.route("/api/portfolio/settings", methods=["POST"])
+def api_portfolio_settings():
+    body = request.get_json(force=True, silent=True) or {}
+    return jsonify(portfolio.update_risk(body.get("risk") or {}))
 
 
 def start_background():

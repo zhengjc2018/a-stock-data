@@ -1,0 +1,15 @@
+{
+  "initial_capital": 1000000.0,
+  "risk": {
+    "max_daily_trades": 3,
+    "per_stock_daily_max": 3,
+    "stop_loss_pct": 2.0,
+    "max_drawdown_pct": 20.0
+  },
+  "equity_history": [
+    {
+      "date": "2026-08-19",
+      "equity": 1000157.74
+    }
+  ]
+}

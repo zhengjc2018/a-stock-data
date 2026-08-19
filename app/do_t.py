@@ -213,6 +213,11 @@ def notify(title, message):
 def _auto_execute(state, signal):
     if not state.get("auto_execute", True):
         return
+    import portfolio
+    ok, msg = portfolio.can_trade(signal["side"])
+    if not ok:
+        print(f"[do_t] risk block {signal['code']}: {msg}", flush=True)
+        return
     code = signal["code"]
     day = datetime.now(CN_TZ).strftime("%Y-%m-%d")
     count = state.setdefault("daily_count", {}).get(code, {}).get(day, 0)
@@ -267,6 +272,11 @@ def check_once():
             _auto_execute(state, sig)
     state["last_check"] = _now()
     save_state(state)
+    try:
+        import portfolio
+        portfolio.record_equity()
+    except Exception:
+        pass
     return state
 
 

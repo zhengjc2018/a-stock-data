@@ -651,6 +651,7 @@ const VIEW_LOADERS = {
   stock: loadStock,
   options: loadOptions,
   health: loadStrategyHealth,
+  portfolio: loadPortfolio,
 };
 
 const LOADED = {};
@@ -704,6 +705,7 @@ $("stock-load").addEventListener("click", loadStock);
 $("stock-code").addEventListener("keydown", (e) => { if (e.key === "Enter") loadStock(); });
 $("option-load").addEventListener("click", loadOptions);
 $("retrain-btn").addEventListener("click", triggerRetrain);
+$("pf-save").addEventListener("click", savePortfolioRisk);
 $("gap-run").addEventListener("click", () => loadGap(true));
 $("gap-premarket").addEventListener("click", loadPremarket);
 $("t-add").addEventListener("click", () => postT("/api/t/holdings", {
@@ -739,6 +741,49 @@ async function pollNotifications() {
 }
 setInterval(pollNotifications, 30000);
 pollNotifications();
+
+async function loadPortfolio() {
+  try {
+    const d = await (await fetch("/api/portfolio")).json();
+    const fmtPct = (v) => (v === null || v === undefined ? "--" : v.toFixed(1) + "%");
+    $("portfolio-stats").innerHTML = `<div class="summary-grid">${
+      [["总资产", fmt(d.equity, 0) + " 元"],
+       ["收益率", fmtPct(d.return_pct)],
+       ["胜率", fmtPct(d.win_rate * 100)],
+       ["盈亏比", d.profit_factor],
+       ["最大回撤", fmtPct(d.max_drawdown_pct)],
+       ["累计交易", d.trades],
+       ["平均盈利", fmtPct(d.avg_win)],
+       ["平均亏损", fmtPct(d.avg_loss)]]
+        .map(([k, v]) => `<div class="summary"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("")
+    }</div>`;
+    const r = d.risk || {};
+    $("pf-max-trades").value = r.max_daily_trades || 3;
+    $("pf-per-stock").value = r.per_stock_daily_max || 3;
+    $("pf-stop-loss").value = r.stop_loss_pct || 2;
+    $("pf-drawdown").value = r.max_drawdown_pct || 20;
+    $("portfolio-equity").innerHTML = table([
+      { key: "date", label: "日期", align: "left" },
+      { key: "equity", label: "权益", format: (v) => fmt(v, 0) },
+    ], d.equity_history || []);
+  } catch (e) {
+    $("portfolio-stats").innerHTML = '<div class="empty">加载失败</div>';
+  }
+}
+
+async function savePortfolioRisk() {
+  await fetch("/api/portfolio/settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ risk: {
+      max_daily_trades: parseInt($("pf-max-trades").value || 3, 10),
+      per_stock_daily_max: parseInt($("pf-per-stock").value || 3, 10),
+      stop_loss_pct: parseFloat($("pf-stop-loss").value || 2),
+      max_drawdown_pct: parseFloat($("pf-drawdown").value || 20),
+    } }),
+  });
+  loadPortfolio();
+}
 
 loadOverview();
 loadGap();

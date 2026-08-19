@@ -209,5 +209,21 @@
       "test_top3": 0.5811,
       "test_top10": 0.6486
     }
+  },
+  {
+    "ts": "2026-08-19 16:08:14",
+    "action": "reject",
+    "reason": "not better than current tail model or rolling stability not met",
+    "metrics": {
+      "base_rate": 0.2357,
+      "base_rate_net": 0.2065,
+      "test_auc": 0.6997,
+      "test_top1": 0.5067,
+      "test_top3": 0.8933,
+      "test_top10": 0.9733,
+      "test_top1_net": 0.48,
+      "test_top3_net": 0.8533,
+      "test_top10_net": 0.9733
+    }
   }
 ]

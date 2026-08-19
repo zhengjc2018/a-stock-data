@@ -830,6 +830,25 @@ def _compute(scope=None):
     scored = score_candidates(candidates)
     scored = _enhance_candidates(scored[:TOP_N])
     ranking = "model" if any(pd.notna(c.get("prob")) for c in scored) else "rule"
+    note = ""
+    if scored:
+        max_n = 3
+        min_prob = 0.30
+        if not index_ma5_up:
+            if index_ret_prev >= -0.005:
+                max_n = 2
+                min_prob = 0.35
+            else:
+                max_n = 1
+                min_prob = 0.45
+        filtered = [
+            c for c in scored
+            if (c.get("enhanced_prob") or 0) >= min_prob and
+               (c.get("industry_rank_prev") or 0) >= 0.3
+        ]
+        scored = filtered[:max_n]
+    if not scored:
+        note = "今日无推荐：候选未达置信度或市场/板块环境不满足"
     return {
         "date": trade_date,
         "ts": int(time.time()),
@@ -837,6 +856,7 @@ def _compute(scope=None):
         "total": len(scored),
         "candidates": scored[:TOP_N],
         "ranking": ranking,
+        "note": note,
         "scope_key": _scope_key(scope),
     }
 

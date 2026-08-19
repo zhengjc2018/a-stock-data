@@ -175,6 +175,7 @@ def api_gap():
         "last_err": gap_pick.last_err(),
         "model": gap_model.meta(),
         "scope": GAP_SCOPE,
+        "stats": _outcome_stats(),
     })
 
 
@@ -356,17 +357,8 @@ def api_options():
     return jsonify(cached(key, 600, load))
 
 
-@app.route("/api/strategy_health")
-def api_strategy_health():
+def _outcome_stats():
     out_dir = app_paths.data_path("outcomes")
-    history = []
-    history_path = app_paths.bundle_path("model_history.json")
-    if os.path.isfile(history_path):
-        try:
-            with open(history_path, encoding="utf-8") as f:
-                history = json.load(f)
-        except Exception:
-            history = []
     days = []
     if os.path.isdir(out_dir):
         for name in sorted(os.listdir(out_dir)):
@@ -398,19 +390,32 @@ def api_strategy_health():
         return round(sum(vals) / len(vals), 4) if vals else None
     total_results = sum(d["total"] for d in last_days)
     total_hits = sum(d["hits"] for d in last_days)
+    return {
+        "verified_days": len(days),
+        "recent_days": len(last_days),
+        "total_results": total_results,
+        "base_rate": round(total_hits / total_results, 4) if total_results else None,
+        "top1_rate": avg("top1"),
+        "top3_rate": avg("top3"),
+        "top10_rate": avg("top10"),
+        "recent": last_days[-10:],
+    }
+
+
+@app.route("/api/strategy_health")
+def api_strategy_health():
+    history = []
+    history_path = app_paths.bundle_path("model_history.json")
+    if os.path.isfile(history_path):
+        try:
+            with open(history_path, encoding="utf-8") as f:
+                history = json.load(f)
+        except Exception:
+            history = []
     return jsonify({
         "model": gap_model.meta(),
         "history": history[-20:],
-        "stats": {
-            "verified_days": len(days),
-            "recent_days": len(last_days),
-            "total_results": total_results,
-            "base_rate": round(total_hits / total_results, 4) if total_results else None,
-            "top1_rate": avg("top1"),
-            "top3_rate": avg("top3"),
-            "top10_rate": avg("top10"),
-            "recent": last_days[-10:],
-        },
+        "stats": _outcome_stats(),
     })
 
 

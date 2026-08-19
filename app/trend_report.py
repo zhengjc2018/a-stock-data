@@ -108,14 +108,34 @@ def t_confidence_analysis():
     return rows
 
 
+def confidence_filter_suggestion(rows):
+    high = next((r for r in rows if r.get("bucket") == "high"), None)
+    if not high or high.get("signals", 0) < 30:
+        return {"suggest": False, "reason": "高置信信号样本不足"}
+    ledger = _read_json(paths.data_path("t_signal_ledger.json")) or []
+    verified = [s for s in ledger if s.get("status") == "verified"]
+    if not verified:
+        return {"suggest": False, "reason": "无已确认信号"}
+    overall = sum(1 for s in verified if s.get("outcome") == "win") / len(verified)
+    if high["win_rate"] >= overall + 0.05:
+        return {
+            "suggest": True,
+            "min_confidence": 0.8,
+            "reason": f"高置信胜率 {high['win_rate']:.1%} 显著高于整体 {overall:.1%}",
+        }
+    return {"suggest": False, "reason": "高置信信号优势未达到5个百分点"}
+
+
 def run():
     selection = selection_trend()
     t = t_trend()
+    conf_rows = t_confidence_analysis()
     summary = {
         "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
         "selection_top3_trend": selection,
         "t_win_trend": t,
-        "t_confidence": t_confidence_analysis(),
+        "t_confidence": conf_rows,
+        "t_confidence_filter": confidence_filter_suggestion(conf_rows),
         "alerts": [],
     }
     if len(selection) >= 2:

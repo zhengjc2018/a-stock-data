@@ -162,6 +162,11 @@ def run():
             summary["alerts"].append("做T胜率较上周下降超过5个百分点")
     summary["t_confidence_filter_applied"] = apply_confidence_suggestion(
         summary["t_confidence_filter"])
+    for alert in summary.get("alerts", []):
+        try:
+            do_t.notify("策略趋势预警", alert)
+        except Exception:
+            pass
     out_path = paths.bundle_path("backtest_report", "trend_report.json")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:

@@ -187,7 +187,7 @@ def score_model(m, features) -> float | None:
                 x[i] = float(v)
             except (TypeError, ValueError):
                 return None
-            if math.isnan(x[i]):
+            if math.isnan(x[i]) or math.isinf(x[i]):
                 return None
         if m["type"] == "gbdt":
             p = _sig(_gbdt_raw(m, x))

@@ -88,10 +88,14 @@ def main():
     test_auc = roc_auc_score(test["label"], test_p)
     metrics = {
         "base_rate": round(float(test["label"].mean()), 4),
+        "base_rate_net": round(float(test["label_net"].mean()), 4),
         "test_auc": round(float(test_auc), 4),
         "test_top1": train_gap_v2.topk_rates(test_df, "prob", (1,))[1],
         "test_top3": train_gap_v2.topk_rates(test_df, "prob", (3,))[3],
         "test_top10": train_gap_v2.topk_rates(test_df, "prob", (10,))[10],
+        "test_top1_net": train_gap_v2.topk_rates(test_df, "prob", (1,), "label_net")[1],
+        "test_top3_net": train_gap_v2.topk_rates(test_df, "prob", (3,), "label_net")[3],
+        "test_top10_net": train_gap_v2.topk_rates(test_df, "prob", (10,), "label_net")[10],
     }
     print("[tune] test", metrics, flush=True)
     val_p = best["model"].predict_proba(val[train_gap_v2.MODEL_FEATURES].values)[:, 1]

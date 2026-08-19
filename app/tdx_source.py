@@ -7,6 +7,7 @@
 沙箱/断网时 available()=False，由各调用方回退旧源（东财/新浪/腾讯）。
 """
 from __future__ import annotations
+import os
 import threading
 import socket
 import time
@@ -108,6 +109,7 @@ def _new_client():
     global _TDX_BROKEN, _TDX_BROKEN_AT
     def _connect():
         with _tdx_timeout():
+            os.makedirs(os.path.expanduser("~/.easy_tdx"), exist_ok=True)
             cc = MacClient.from_best_host()
             cc.ensure_connected()
             return cc

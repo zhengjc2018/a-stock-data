@@ -170,7 +170,7 @@ def signal_indices(df, p):
     return buy, sell
 
 
-def target_stop_winrate(df, buy_idx, sell_idx, p):
+def target_stop_winrate(df, buy_idx, sell_idx, p, cost_rate=0.0012):
     horizon = p.get("horizon", 12)
     target = p["target"]
     stop = p["stop"]
@@ -179,13 +179,15 @@ def target_stop_winrate(df, buy_idx, sell_idx, p):
         entry = df.iloc[i]["close"]
         day = df.iloc[i]["day"]
         win = None
+        buy_target = entry * (1 + target + cost_rate)
+        buy_stop = entry * (1 - stop - cost_rate)
         for j in range(i + 1, min(i + 1 + horizon, len(df))):
             if df.iloc[j]["day"] != day:
                 break
-            if df.iloc[j]["high"] >= entry * (1 + target):
+            if df.iloc[j]["high"] >= buy_target:
                 win = True
                 break
-            if df.iloc[j]["low"] <= entry * (1 - stop):
+            if df.iloc[j]["low"] <= buy_stop:
                 win = False
                 break
         if win is None and i + 1 < len(df) and df.iloc[i + 1]["day"] == day:
@@ -197,13 +199,15 @@ def target_stop_winrate(df, buy_idx, sell_idx, p):
         entry = df.iloc[i]["close"]
         day = df.iloc[i]["day"]
         win = None
+        sell_target = entry * (1 - target - cost_rate)
+        sell_stop = entry * (1 + stop + cost_rate)
         for j in range(i + 1, min(i + 1 + horizon, len(df))):
             if df.iloc[j]["day"] != day:
                 break
-            if df.iloc[j]["low"] <= entry * (1 - target):
+            if df.iloc[j]["low"] <= sell_target:
                 win = True
                 break
-            if df.iloc[j]["high"] >= entry * (1 + stop):
+            if df.iloc[j]["high"] >= sell_stop:
                 win = False
                 break
         if win is None and i + 1 < len(df) and df.iloc[i + 1]["day"] == day:

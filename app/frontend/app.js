@@ -291,10 +291,12 @@ function renderGap(payload) {
   setStatus("已连接", "ok");
   const ranking = data.ranking === "model" ? "模型概率排序" : "规则评分排序";
   const mm = (payload.model && payload.model.metrics) || {};
+  const tm = (payload.tail_model && payload.tail_model.metrics) || {};
   const st = payload.stats || {};
   const top10 = mm.test_top10 ? `测试Top10命中 ${(mm.test_top10 * 100).toFixed(1)}%` : "";
+  const top10Net = tm.test_top3_net ? ` · 尾盘Top3净口径 ${(tm.test_top3_net * 100).toFixed(1)}%` : (mm.test_top10_net ? ` · 净口径 ${(mm.test_top10_net * 100).toFixed(1)}%` : "");
   const real = st.recent_days ? ` · 近${st.recent_days}天Top3真实命中 ${st.top3_rate ? (st.top3_rate * 100).toFixed(1) + "%" : "--"}` : "";
-  meta.textContent = `${data.date} · 仅主板 · GBDT校准 · ${ranking} · 候选 ${data.total} 只 · ${top10}${real} · 耗时 ${data.elapsed_sec}s`;
+  meta.textContent = `${data.date} · 仅主板 · GBDT校准 · ${ranking} · 候选 ${data.total} 只 · ${top10}${top10Net}${real} · 耗时 ${data.elapsed_sec}s`;
   const top = data.candidates.slice(0, 3);
   box.innerHTML = table([
     { key: "rank", label: "#", align: "left", raw: true, format: (v, r) => `<b>${r._i + 1}</b>` },
@@ -306,6 +308,7 @@ function renderGap(payload) {
     { key: "enhanced_prob", label: "盘中3%概率", format: (v) => (v === null || v === undefined || Number.isNaN(v) ? "--" : (v * 100).toFixed(1) + "%") },
     { key: "main_net_yi", label: "主力净额", format: (v) => (v === null || v === undefined ? "--" : fmt(v, 1) + "亿"), cls: (v) => cls(v), hideSm: true },
     { key: "main_intent", label: "主力意图", format: (v) => v || "--", hideSm: true },
+    { key: "confirm_score", label: "确认层", format: (v) => (v === null || v === undefined ? "--" : `${v}/6`), hideSm: true },
     { key: "lhb_count_5", label: "5日龙虎榜", format: (v) => v || "--", hideSm: true },
     { key: "hot_rank", label: "热榜", format: (v) => v || "--", hideSm: true },
     { key: "reason", label: "入选理由", align: "left" },
@@ -429,12 +432,15 @@ async function loadStrategyHealth() {
   try {
     const d = await (await fetch("/api/strategy_health")).json();
     const m = d.model || {};
+    const tm = d.tail_model || {};
     const s = d.stats || {};
     $("health-meta").textContent = `已验证 ${s.verified_days || 0} 天 · 近30天Top10 ${s.top10_rate ? (s.top10_rate * 100).toFixed(1) + "%" : "--"}`;
     const cards = [
       ["当前模型", (m.type || "--").toUpperCase()],
       ["测试AUC", m.metrics && m.metrics.test_auc ? m.metrics.test_auc : "--"],
       ["测试Top10", m.metrics && m.metrics.test_top10 ? (m.metrics.test_top10 * 100).toFixed(1) + "%" : "--"],
+      ["测试Top10净口径", m.metrics && m.metrics.test_top10_net ? (m.metrics.test_top10_net * 100).toFixed(1) + "%" : "--"],
+      ["尾盘模型Top3净口径", tm.test_top3_net ? (tm.test_top3_net * 100).toFixed(1) + "%" : "--"],
       ["已验证天数", s.verified_days || 0],
       ["近30天Top10", s.top10_rate ? (s.top10_rate * 100).toFixed(1) + "%" : "--"],
       ["真实高开基准", s.base_rate ? (s.base_rate * 100).toFixed(1) + "%" : "--"],

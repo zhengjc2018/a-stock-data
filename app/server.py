@@ -20,6 +20,7 @@ import gap_model
 import gap_pick
 import paths as app_paths
 import portfolio
+import tail_model
 
 app = Flask(__name__, static_folder="frontend", static_url_path="")
 
@@ -175,6 +176,7 @@ def api_gap():
         "ts": gap_pick.cache_ts(),
         "last_err": gap_pick.last_err(),
         "model": gap_model.meta(),
+        "tail_model": tail_model.meta(),
         "scope": GAP_SCOPE,
         "stats": _outcome_stats(),
     })
@@ -415,6 +417,7 @@ def api_strategy_health():
             history = []
     return jsonify({
         "model": gap_model.meta(),
+        "tail_model": tail_model.meta(),
         "history": history[-20:],
         "stats": _outcome_stats(),
     })

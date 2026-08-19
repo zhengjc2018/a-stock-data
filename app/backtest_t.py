@@ -81,19 +81,22 @@ def evaluate_signals(df, buy_idx, sell_idx):
     return out
 
 
-def evaluate_target_stop(df, buy_idx, sell_idx, horizon=12, target=0.005, stop=0.005):
+def evaluate_target_stop(df, buy_idx, sell_idx, horizon=12, target=0.005, stop=0.005,
+                         cost_rate=0.0012):
     out = {"buy": [], "sell": []}
     for i in buy_idx:
         entry = df.iloc[i]["close"]
         day = df.iloc[i]["day"]
         win = None
+        buy_target = entry * (1 + target + cost_rate)
+        buy_stop = entry * (1 - stop - cost_rate)
         for j in range(i + 1, min(i + 1 + horizon, len(df))):
             if df.iloc[j]["day"] != day:
                 break
-            if df.iloc[j]["high"] >= entry * (1 + target):
+            if df.iloc[j]["high"] >= buy_target:
                 win = True
                 break
-            if df.iloc[j]["low"] <= entry * (1 - stop):
+            if df.iloc[j]["low"] <= buy_stop:
                 win = False
                 break
         if win is None and i + 1 < len(df) and df.iloc[i + 1]["day"] == day:
@@ -104,13 +107,15 @@ def evaluate_target_stop(df, buy_idx, sell_idx, horizon=12, target=0.005, stop=0
         entry = df.iloc[i]["close"]
         day = df.iloc[i]["day"]
         win = None
+        sell_target = entry * (1 - target - cost_rate)
+        sell_stop = entry * (1 + stop + cost_rate)
         for j in range(i + 1, min(i + 1 + horizon, len(df))):
             if df.iloc[j]["day"] != day:
                 break
-            if df.iloc[j]["low"] <= entry * (1 - target):
+            if df.iloc[j]["low"] <= sell_target:
                 win = True
                 break
-            if df.iloc[j]["high"] >= entry * (1 + stop):
+            if df.iloc[j]["high"] >= sell_stop:
                 win = False
                 break
         if win is None and i + 1 < len(df) and df.iloc[i + 1]["day"] == day:

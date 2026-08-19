@@ -106,19 +106,22 @@ def add_features(df, idx_df, fund_flow):
     return df
 
 
-def target_stop_winrate(df, buy_idx, sell_idx, horizon=12, target=0.005, stop=0.005):
+def target_stop_winrate(df, buy_idx, sell_idx, horizon=12, target=0.005, stop=0.005,
+                        cost_rate=0.0012):
     out = {"buy": [0, 0], "sell": [0, 0]}
     for i in buy_idx:
         entry = df.iloc[i]["close"]
         day = df.iloc[i]["day"]
         win = None
+        buy_target = entry * (1 + target + cost_rate)
+        buy_stop = entry * (1 - stop - cost_rate)
         for j in range(i + 1, min(i + 1 + horizon, len(df))):
             if df.iloc[j]["day"] != day:
                 break
-            if df.iloc[j]["high"] >= entry * (1 + target):
+            if df.iloc[j]["high"] >= buy_target:
                 win = True
                 break
-            if df.iloc[j]["low"] <= entry * (1 - stop):
+            if df.iloc[j]["low"] <= buy_stop:
                 win = False
                 break
         if win is None and i + 1 < len(df) and df.iloc[i + 1]["day"] == day:
@@ -130,13 +133,15 @@ def target_stop_winrate(df, buy_idx, sell_idx, horizon=12, target=0.005, stop=0.
         entry = df.iloc[i]["close"]
         day = df.iloc[i]["day"]
         win = None
+        sell_target = entry * (1 - target - cost_rate)
+        sell_stop = entry * (1 + stop + cost_rate)
         for j in range(i + 1, min(i + 1 + horizon, len(df))):
             if df.iloc[j]["day"] != day:
                 break
-            if df.iloc[j]["low"] <= entry * (1 - target):
+            if df.iloc[j]["low"] <= sell_target:
                 win = True
                 break
-            if df.iloc[j]["high"] >= entry * (1 + stop):
+            if df.iloc[j]["high"] >= sell_stop:
                 win = False
                 break
         if win is None and i + 1 < len(df) and df.iloc[i + 1]["day"] == day:

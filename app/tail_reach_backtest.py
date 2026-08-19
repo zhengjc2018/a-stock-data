@@ -49,7 +49,7 @@ def main():
     test = test[test["amount_proxy_yi"] >= 0.5]
     print(f"[reach] test after amount filter {len(test)}", flush=True)
 
-    def evaluate(col):
+    def evaluate(col, label_col="label"):
         top1 = top3 = top5 = 0
         days = 0
         trades = 0
@@ -59,9 +59,9 @@ def main():
                 continue
             days += 1
             trades += min(5, len(g))
-            top1 += int(bool(g.iloc[:1]["label"].any()))
-            top3 += int(bool(g.iloc[:3]["label"].any()))
-            top5 += int(bool(g.iloc[:5]["label"].any()))
+            top1 += int(bool(g.iloc[:1][label_col].any()))
+            top3 += int(bool(g.iloc[:3][label_col].any()))
+            top5 += int(bool(g.iloc[:5][label_col].any()))
         return {
             "days": days, "trades": trades,
             "top1": round(top1 / days, 4) if days else None,
@@ -71,11 +71,17 @@ def main():
 
     model_res = evaluate("prob")
     baseline_res = evaluate("pct_chg")
+    model_net = evaluate("prob", "label_net")
+    baseline_net = evaluate("pct_chg", "label_net")
     print("[reach] model", model_res)
     print("[reach] baseline top by pct_chg", baseline_res)
+    print("[reach] model net", model_net)
+    print("[reach] baseline net", baseline_net)
     rows = pd.DataFrame([
         {"strategy": "模型TopN", **model_res},
+        {"strategy": "模型TopN(净口径)", **model_net},
         {"strategy": "基准-涨幅TopN", **baseline_res},
+        {"strategy": "基准-涨幅TopN(净口径)", **baseline_net},
     ])
     os.makedirs("backtest_report", exist_ok=True)
     out = "backtest_report/tail_reach_backtest.csv"

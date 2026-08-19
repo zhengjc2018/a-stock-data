@@ -24,6 +24,8 @@ OUT_DIR = paths.bundle_path("outcomes")
 HISTORY_FILE = paths.bundle_path("model_history.json")
 MODEL_FILE = paths.bundle_path("gap_model.json")
 PREV_FILE = paths.bundle_path("gap_model_prev.json")
+TAIL_MODEL_FILE = paths.bundle_path("tail_reach_model.json")
+TAIL_PREV_FILE = paths.bundle_path("tail_reach_model_prev.json")
 TRAIN_SCRIPT = paths.bundle_path("train_gap_v2.py")
 
 
@@ -61,6 +63,17 @@ def current_metrics():
         return None
 
 
+def current_tail_metrics():
+    if not os.path.isfile(TAIL_MODEL_FILE):
+        return None
+    try:
+        with open(TAIL_MODEL_FILE, encoding="utf-8") as f:
+            raw = json.load(f)
+        return raw.get("metrics")
+    except Exception:
+        return None
+
+
 def train_candidate(out_path):
     import train_gap_v2
 
@@ -83,37 +96,68 @@ def train_candidate(out_path):
     return payload
 
 
+def train_tail_candidate(out_path):
+    import train_gap_v2
+
+    args = argparse.Namespace(
+        codes=None,
+        limit=500,
+        trees=150,
+        depth=3,
+        start="2024-08-01",
+        end=time.strftime("%Y-%m-%d"),
+        out=out_path,
+        no_zt_heat=True,
+        outcomes_dir=OUT_DIR,
+        label_gap=0.03,
+        reach=True,
+    )
+    payload = train_gap_v2.train_model(args)
+    if payload is None:
+        raise RuntimeError("尾盘模型训练样本不足或失败")
+    return payload
+
+
 def download_model():
-    """从 GitHub 下载最新 gap_model.json 并更新本地（手机/打包版用）。"""
-    raw_url = "https://raw.githubusercontent.com/zhengjc2018/a-stock-data/main/app/gap_model.json"
-    urls = [raw_url, "https://gh-proxy.com/" + raw_url]
-    target = paths.data_path("gap_model.json")
-    os.makedirs(os.path.dirname(target), exist_ok=True)
-    for url in urls:
-        try:
-            r = requests.get(url, timeout=30)
-            if r.status_code != 200:
+    """从 GitHub 下载最新 gap_model/tail_reach_model 并更新本地（手机/打包版用）。"""
+    remote_models = [
+        ("gap_model.json", MODEL_FILE),
+        ("tail_reach_model.json", TAIL_MODEL_FILE),
+    ]
+    os.makedirs(os.path.dirname(MODEL_FILE), exist_ok=True)
+    downloaded = {}
+    for remote_name, target in remote_models:
+        raw_url = f"https://raw.githubusercontent.com/zhengjc2018/a-stock-data/main/app/{remote_name}"
+        urls = [raw_url, "https://gh-proxy.com/" + raw_url]
+        for url in urls:
+            try:
+                r = requests.get(url, timeout=30)
+                if r.status_code != 200:
+                    continue
+                raw = r.json()
+                if not (isinstance(raw, dict) and raw.get("type") == "gbdt"
+                        and raw.get("features") and raw.get("trees")):
+                    continue
+                with open(target, "w", encoding="utf-8") as f:
+                    json.dump(raw, f, ensure_ascii=False)
+                history = _load_history()
+                history.append({
+                    "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "action": "remote_update",
+                    "reason": f"downloaded {remote_name} from GitHub",
+                    "source": url,
+                    "new_hash": _file_hash(target),
+                    "metrics": raw.get("metrics"),
+                })
+                _save_history(history)
+                downloaded[remote_name] = raw.get("metrics") or {}
+                break
+            except Exception:
                 continue
-            raw = r.json()
-            if not (isinstance(raw, dict) and raw.get("type") == "gbdt"
-                    and raw.get("features") and raw.get("trees")):
-                continue
-            with open(target, "w", encoding="utf-8") as f:
-                json.dump(raw, f, ensure_ascii=False)
-            history = _load_history()
-            history.append({
-                "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "action": "remote_update",
-                "reason": "downloaded from GitHub",
-                "source": url,
-                "new_hash": _file_hash(target),
-                "metrics": raw.get("metrics"),
-            })
-            _save_history(history)
-            return raw.get("metrics") or {}
-        except Exception:
-            continue
-    raise RuntimeError("无法从 GitHub 下载模型，请检查网络")
+        if remote_name not in downloaded:
+            raise RuntimeError(f"无法从 GitHub 下载 {remote_name}，请检查网络")
+    return {"gap": downloaded.get("gap_model.json"),
+            "tail": downloaded.get("tail_reach_model.json")}
 
 
 def should_publish(cur, new):
@@ -123,7 +167,12 @@ def should_publish(cur, new):
     gain_top3 = float(new.get("test_top3") or 0) - float(cur.get("test_top3") or 0)
     gain_top10 = float(new.get("test_top10") or 0) - float(cur.get("test_top10") or 0)
     gain_auc = float(new.get("test_auc") or 0) - float(cur.get("test_auc") or 0)
+    gain_top1_net = float(new.get("test_top1_net") or 0) - float(cur.get("test_top1_net") or 0)
+    gain_top3_net = float(new.get("test_top3_net") or 0) - float(cur.get("test_top3_net") or 0)
+    gain_top10_net = float(new.get("test_top10_net") or 0) - float(cur.get("test_top10_net") or 0)
     return (gain_top10 >= 0.005 or gain_top3 >= 0.02 or gain_top1 >= 0.03
+            or gain_top10_net >= 0.01 or gain_top3_net >= 0.02
+            or gain_top1_net >= 0.03
             or (gain_top10 >= 0 and gain_auc >= 0.003))
 
 
@@ -143,6 +192,25 @@ def publish(new_path, new_metrics, reason):
     print(f"[auto_train] published, reason={reason}", flush=True)
 
 
+def publish_tail(new_path, new_metrics, reason):
+    if os.path.isfile(TAIL_MODEL_FILE):
+        try:
+            shutil.copyfile(TAIL_MODEL_FILE, TAIL_PREV_FILE)
+        except Exception:
+            pass
+    shutil.copyfile(new_path, TAIL_MODEL_FILE)
+    history = _load_history()
+    history.append({
+        "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "action": "publish_tail",
+        "reason": reason,
+        "new_hash": _file_hash(TAIL_MODEL_FILE),
+        "metrics": new_metrics,
+    })
+    _save_history(history)
+    print(f"[auto_train] published tail model, reason={reason}", flush=True)
+
+
 def reject(new_metrics, reason):
     history = _load_history()
     history.append({
@@ -156,22 +224,42 @@ def reject(new_metrics, reason):
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--model", choices=("gap", "tail", "both"), default="both")
+    args = ap.parse_args()
     os.makedirs(OUT_DIR, exist_ok=True)
-    cur = current_metrics()
-    print("[auto_train] current", cur, flush=True)
-    new_path = os.path.join(OUT_DIR, "..", "gap_candidate.json")
-    new_path = os.path.abspath(new_path)
-    new_model = train_candidate(new_path)
-    new_metrics = new_model.get("metrics") or {}
-    print("[auto_train] candidate", new_metrics, flush=True)
-    if should_publish(cur, new_metrics):
-        reason = "first publish" if not cur else "metrics improved"
-        publish(new_path, new_metrics, reason)
-        return {"action": "publish", "reason": reason, "metrics": new_metrics}
-    else:
-        reason = "not better than current model"
-        reject(new_metrics, reason)
-        return {"action": "reject", "reason": reason, "metrics": new_metrics}
+    results = {}
+    if args.model in ("gap", "both"):
+        cur = current_metrics()
+        print("[auto_train] current gap", cur, flush=True)
+        new_path = os.path.abspath(os.path.join(OUT_DIR, "..", "gap_candidate.json"))
+        new_model = train_candidate(new_path)
+        new_metrics = new_model.get("metrics") or {}
+        print("[auto_train] gap candidate", new_metrics, flush=True)
+        if should_publish(cur, new_metrics):
+            reason = "first publish" if not cur else "metrics improved"
+            publish(new_path, new_metrics, reason)
+            results["gap"] = {"action": "publish", "reason": reason, "metrics": new_metrics}
+        else:
+            reason = "not better than current model"
+            reject(new_metrics, reason)
+            results["gap"] = {"action": "reject", "reason": reason, "metrics": new_metrics}
+    if args.model in ("tail", "both"):
+        cur = current_tail_metrics()
+        print("[auto_train] current tail", cur, flush=True)
+        new_path = os.path.abspath(os.path.join(OUT_DIR, "..", "tail_candidate.json"))
+        new_model = train_tail_candidate(new_path)
+        new_metrics = new_model.get("metrics") or {}
+        print("[auto_train] tail candidate", new_metrics, flush=True)
+        if should_publish(cur, new_metrics):
+            reason = "first publish" if not cur else "tail metrics improved"
+            publish_tail(new_path, new_metrics, reason)
+            results["tail"] = {"action": "publish", "reason": reason, "metrics": new_metrics}
+        else:
+            reason = "not better than current tail model"
+            reject(new_metrics, reason)
+            results["tail"] = {"action": "reject", "reason": reason, "metrics": new_metrics}
+    return results
 
 
 if __name__ == "__main__":

@@ -150,7 +150,7 @@ def _append_rows(code, df, industry, start, end, index_ret, index_ma5_up, label_
             except (TypeError, ValueError):
                 bad = True
                 break
-            if math.isnan(fv):
+            if math.isnan(fv) or math.isinf(fv):
                 bad = True
                 break
             feats[name] = fv
@@ -160,12 +160,20 @@ def _append_rows(code, df, industry, start, end, index_ret, index_ma5_up, label_
         feats["index_ma5_up"] = index_ma5_up.get(date, 0.0)
         if reach:
             label = 1 if float(max(nxt["open"], nxt["high"])) >= price * (1 + label_gap) else 0
+            label_net = 1 if float(max(nxt["open"], nxt["high"])) >= price * (1 + label_gap + 0.003) else 0
         else:
             label = 1 if float(nxt["open"]) >= price * (1 + label_gap) else 0
-        rows.append({"date": date, "code": code, "industry": industry,
-                     "close": price,
-                     "volume": float(r.get("volume") or r.get("vol") or 0),
-                     **feats, "label": label})
+            label_net = 1 if float(nxt["open"]) >= price * (1 + label_gap + 0.003) else 0
+        rows.append({
+            "date": date, "code": code, "industry": industry,
+            "close": price,
+            "volume": float(r.get("volume") or r.get("vol") or 0),
+            "next_open": float(nxt["open"]),
+            "next_high": float(nxt["high"]),
+            "next_low": float(nxt["low"]),
+            "next_close": float(nxt["close"]),
+            **feats, "label": label, "label_net": label_net,
+        })
 
 
 def load_zt_heat(dates):
@@ -185,7 +193,7 @@ def load_zt_heat(dates):
     return heat
 
 
-def topk_rates(df, col, ks=(1, 3, 10)):
+def topk_rates(df, col, ks=(1, 3, 10), label_col="label"):
     out = {k: [0, 0] for k in ks}
     for _, g in df.groupby("date", sort=True):
         g = g.sort_values(col, ascending=False)
@@ -193,7 +201,7 @@ def topk_rates(df, col, ks=(1, 3, 10)):
             if len(g) < k:
                 continue
             out[k][1] += 1
-            if bool(g.iloc[:k]["label"].any()):
+            if bool(g.iloc[:k][label_col].any()):
                 out[k][0] += 1
     return {k: round(out[k][0] / max(1, out[k][1]), 4) for k in ks}
 
@@ -238,6 +246,7 @@ def load_outcomes(out_dir):
                 "industry": c.get("industry", ""),
                 **feats,
                 "label": 1 if h.get("hit") else 0,
+                "label_net": 1 if h.get("hit") else 0,
             })
     return rows
 
@@ -310,7 +319,7 @@ def prepare_data(args):
         added = load_outcomes(args.outcomes_dir)
         if added:
             extra = pd.DataFrame(added)
-            keep_cols = ["date", "code", "industry"] + MODEL_FEATURES + ["label"]
+            keep_cols = ["date", "code", "industry"] + MODEL_FEATURES + ["label", "label_net"]
             extra = extra[keep_cols]
             df = pd.concat([df, extra], ignore_index=True)
             df = df.drop_duplicates(subset=["date", "code"], keep="first")
@@ -369,10 +378,14 @@ def train_model(args):
     auc = roc_auc_score(test["label"], test_p)
     metrics = {
         "base_rate": round(float(test["label"].mean()), 4),
+        "base_rate_net": round(float(test["label_net"].mean()), 4),
         "test_auc": round(float(auc), 4),
         "test_top1": topk_rates(test, "prob", (1,))[1],
         "test_top3": topk_rates(test, "prob", (3,))[3],
         "test_top10": topk_rates(test, "prob", (10,))[10],
+        "test_top1_net": topk_rates(test, "prob", (1,), "label_net")[1],
+        "test_top3_net": topk_rates(test, "prob", (3,), "label_net")[3],
+        "test_top10_net": topk_rates(test, "prob", (10,), "label_net")[10],
     }
     print("[train] metrics", metrics, flush=True)
 

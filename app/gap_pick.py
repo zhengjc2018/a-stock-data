@@ -67,6 +67,17 @@ EXTRA_FEATURES = [
     "morning_star", "three_white_soldiers", "bullish_harami", "piercing",
     "rising_three", "turtle_breakout", "ma_reclaim",
     "close_pos", "close_high_ratio",
+    # Alpha101/Alpha158 风格扩展：波动率、量价相关、形态、动量、筹码特征。
+    "volatility_10", "volatility_20", "volatility_ratio_20_60",
+    "vol_price_corr10", "vol_price_corr20", "volume_std20",
+    "ret_skew20", "ret_kurt20", "max_ret_20", "min_ret_20",
+    "ma5_slope", "ma10_slope", "ma20_slope", "macd_slope", "rsi_slope",
+    "up_days_10", "consecutive_up", "consecutive_down",
+    "gap_avg_20", "high_breakout_count_60", "low_breakout_count_60",
+    "volume_accel_10", "money_flow_ratio", "range_position_20",
+    "price_accel_5", "price_accel_10", "atr_ratio_10_20",
+    "boll_pct_change", "corr_high_low_20", "close_above_ma5_ratio_20",
+    "volume_price_divergence", "limit_up_history_60",
 ]
 
 _GAP_CACHE = {"ts": 0, "data": None, "computing": False, "last_err": None}
@@ -277,6 +288,15 @@ def _add_limit_labels(df: pd.DataFrame) -> pd.DataFrame:
 
 def _add_features(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
+    if "is_limit_up" not in out.columns:
+        pre = out["close"].shift(1)
+        out["pre_close"] = pre
+        out["is_limit_up"] = (
+            (out["close"] >= pre * 1.099) & (pre > 0)
+        )
+        out["limit_streak"] = 0
+        out["prev_limit_up"] = 0
+        out["limit_streak_prev"] = 0
     out["vol_ratio_5"] = out["volume"] / out["volume"].rolling(5).mean().shift(1)
     prev_close = out["pre_close"] if "pre_close" in out.columns else out["close"].shift(1)
     out["pct_chg"] = (out["close"] / prev_close - 1) * 100
@@ -411,7 +431,59 @@ def _add_features(df: pd.DataFrame) -> pd.DataFrame:
     span_day = (high - low).replace(0, np.nan)
     out["close_pos"] = (close - low) / span_day
     out["close_high_ratio"] = close / high
-    return out
+    ret = close.pct_change()
+    out["volatility_10"] = ret.rolling(10).std()
+    out["volatility_20"] = ret.rolling(20).std()
+    out["volatility_ratio_20_60"] = (
+        ret.rolling(20).std() / ret.rolling(60).std()
+    )
+    out["vol_price_corr10"] = close.rolling(10).corr(volume)
+    out["vol_price_corr20"] = close.rolling(20).corr(volume)
+    out["volume_std20"] = volume.rolling(20).std() / vol_ma20
+    out["ret_skew20"] = ret.rolling(20).skew()
+    out["ret_kurt20"] = ret.rolling(20).kurt()
+    out["max_ret_20"] = ret.rolling(20).max()
+    out["min_ret_20"] = ret.rolling(20).min()
+    out["ma5_slope"] = ma5 / ma5.shift(5) - 1
+    out["ma10_slope"] = ma10 / ma10.shift(5) - 1
+    out["ma20_slope"] = ma20 / ma20.shift(5) - 1
+    out["macd_slope"] = dif / dif.shift(3) - 1
+    out["rsi_slope"] = out["rsi6"] / out["rsi6"].shift(3) - 1
+    out["up_days_10"] = (close > prev_close).rolling(10).sum()
+    up_streak, down_streak, up_cur, down_cur = [], [], 0, 0
+    for is_up in (close > prev_close).fillna(False).tolist():
+        up_cur = up_cur + 1 if is_up else 0
+        down_cur = 0 if is_up else down_cur + 1
+        up_streak.append(up_cur)
+        down_streak.append(down_cur)
+    out["consecutive_up"] = up_streak
+    out["consecutive_down"] = down_streak
+    out["gap_avg_20"] = (open_ / prev_close - 1).abs().rolling(20).mean()
+    prev_high60 = high.rolling(60).max().shift(1)
+    prev_low60 = low.rolling(60).min().shift(1)
+    out["high_breakout_count_60"] = (
+        close >= prev_high60 * 0.995
+    ).rolling(60).sum()
+    out["low_breakout_count_60"] = (
+        close <= prev_low60 * 1.005
+    ).rolling(60).sum()
+    out["volume_accel_10"] = volume / volume.shift(10) - 1
+    amount_safe = amount.replace(0, np.nan)
+    out["money_flow_ratio"] = ((close - open_) * volume) / amount_safe
+    low20 = low.rolling(20).min()
+    high20 = high.rolling(20).max()
+    out["range_position_20"] = (close - low20) / (high20 - low20)
+    out["price_accel_5"] = close.pct_change(5).diff()
+    out["price_accel_10"] = close.pct_change(10).diff()
+    out["atr_ratio_10_20"] = tr.rolling(10).mean() / tr.rolling(20).mean()
+    out["boll_pct_change"] = boll_pos - boll_pos.shift(3)
+    out["corr_high_low_20"] = high.rolling(20).corr(low)
+    out["close_above_ma5_ratio_20"] = (close > ma5).rolling(20).mean()
+    out["volume_price_divergence"] = (
+        (close.pct_change() * volume.pct_change()).rolling(10).mean()
+    )
+    out["limit_up_history_60"] = out["is_limit_up"].rolling(60).sum()
+    return out.replace([np.inf, -np.inf], np.nan)
 
 
 def _history_df(secid: str, trade_date: str, price, high, low, volume_lots, amount=None) -> pd.DataFrame:
@@ -556,7 +628,7 @@ def build_candidates(
             }
             for _f in EXTRA_FEATURES:
                 features[_f] = _to_float(last.get(_f), None)
-            if any(v is None or pd.isna(v) for v in features.values()):
+            if any(v is None or pd.isna(v) or not np.isfinite(v) for v in features.values()):
                 return None
             return {
                 "code": code,
@@ -722,12 +794,35 @@ def _enhance_candidates(candidates):
             boost += 0.02
         elif holder_chg > 0.02:
             boost -= 0.01
+        confirm_layers = {}
+        if _to_float(c.get("index_ma5_up")) >= 0.5:
+            confirm_layers["大盘"] = "指数站上MA5"
+        if (_to_float(c.get("industry_rank_prev")) >= 0.6 or
+                int(_to_float(c.get("industry_limit_count"))) >= 2):
+            confirm_layers["板块"] = "板块排名靠前/有涨停"
+        if (_to_float(c.get("vol_breakout")) >= 1 or
+                _to_float(c.get("vol_ratio_5")) >= 1.2):
+            confirm_layers["量能"] = "放量或量比抬升"
+        if main_net_yi > 0:
+            confirm_layers["资金"] = "主力净流入"
+        if hot_rank or lhb_count > 0 or event_flag > 0:
+            confirm_layers["情绪"] = "热榜/龙虎榜/利好"
+        if (_to_float(c.get("pos_ma20")) > 0 and
+                _to_float(c.get("close_high_ratio")) >= 0.5):
+            confirm_layers["位置"] = "站上MA20且收在当日偏强区"
+        confirm_score = len(confirm_layers)
+        if confirm_score >= 3:
+            boost += (confirm_score - 3) * 0.01
+        if confirm_score <= 1 and main_net_yi < 0:
+            boost -= 0.04
         c["main_net_yi"] = round(main_net_yi, 2)
         c["lhb_inst_net"] = round(lhb_inst_net, 1)
         c["margin_chg"] = round(margin_chg, 4)
         c["holder_chg"] = round(holder_chg, 3)
         c["hot_rank"] = hot_rank
         c["lhb_count_5"] = lhb_count
+        c["confirm_score"] = confirm_score
+        c["confirm_layers"] = confirm_layers
         if main_net_yi > 0.5 or lhb_inst_net > 0:
             c["main_intent"] = "吸筹"
         elif main_net_yi < -0.5 or lhb_inst_net < 0:

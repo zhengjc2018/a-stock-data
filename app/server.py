@@ -452,7 +452,7 @@ def api_retrain():
                 metrics = auto_train.download_model()
                 result = {"action": "remote_update", "metrics": metrics}
             else:
-                result = auto_train.main()
+                result = auto_train.main(["--model", "both", "--limit", "400", "--rolling"])
             with _RETRAIN_LOCK:
                 _RETRAIN_STATE.update(running=False, finished=int(time.time()), result=result)
         except Exception as e:

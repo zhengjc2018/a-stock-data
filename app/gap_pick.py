@@ -217,7 +217,7 @@ def fetch_market_snapshot(max_pages=SNAPSHOT_MAX_PAGES) -> pd.DataFrame:
                     "invt": "2",
                     "fid": "f12",
                     "fs": "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048",
-                    "fields": "f2,f3,f5,f6,f9,f12,f14,f15,f16,f17,f18,f20,f21,f23,f100",
+                    "fields": "f2,f3,f5,f6,f8,f9,f12,f14,f15,f16,f17,f18,f20,f21,f23,f100",
                 },
                 timeout=12,
                 retries=2,
@@ -230,6 +230,7 @@ def fetch_market_snapshot(max_pages=SNAPSHOT_MAX_PAGES) -> pd.DataFrame:
             break
         for it in diff:
             f20 = _to_float(it.get("f20"), None)
+            f21 = _to_float(it.get("f21"), None)
             rows.append({
                 "code": str(it.get("f12", "")).zfill(6),
                 "name": it.get("f14", ""),
@@ -237,11 +238,13 @@ def fetch_market_snapshot(max_pages=SNAPSHOT_MAX_PAGES) -> pd.DataFrame:
                 "pct_chg": _to_float(it.get("f3"), None),
                 "volume_lots": _to_float(it.get("f5"), None),
                 "amount": _to_float(it.get("f6"), None),
+                "turnover": _to_float(it.get("f8"), None),
                 "high": _to_float(it.get("f15"), None),
                 "low": _to_float(it.get("f16"), None),
                 "pe_ttm": _to_float(it.get("f9"), None),
                 "pb": _to_float(it.get("f23"), None),
                 "mktcap": f20 / 1e8 if f20 else None,
+                "float_mcap": f21 / 1e8 if f21 else None,
                 "industry": str(it.get("f100") or "").strip(),
             })
         if len(diff) < SNAPSHOT_PAGE_SIZE:
@@ -647,6 +650,7 @@ def build_candidates(
                 "name": name,
                 "price": _to_float(row.get("price")),
                 "change_pct": _to_float(row.get("pct_chg")),
+                "turnover_pct": _to_float(row.get("turnover"), None),
                 "industry": industry,
                 **features,
             }
@@ -819,8 +823,9 @@ def _enhance_candidates(candidates):
                 int(_to_float(c.get("industry_limit_count"))) >= 2):
             confirm_layers["板块"] = "板块排名靠前/有涨停"
         if (_to_float(c.get("vol_breakout")) >= 1 or
-                _to_float(c.get("vol_ratio_5")) >= 1.2):
-            confirm_layers["量能"] = "放量或量比抬升"
+                _to_float(c.get("vol_ratio_5")) >= 1.2 or
+                _to_float(c.get("turnover_pct")) >= 5):
+            confirm_layers["量能"] = "放量/量比/换手抬升"
         if main_net_yi > 0:
             confirm_layers["资金"] = "主力净流入"
         if hot_rank or lhb_count > 0 or event_flag > 0:

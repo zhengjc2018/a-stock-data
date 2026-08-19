@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import os
 import random
 import re
 import threading
@@ -363,14 +364,16 @@ def _sina_to_internal(rows):
     out, prev = [], None
     for r in rows or []:
         try:
+            day = r.get("day") or r.get("date") or ""
             o, c = float(r["open"]), float(r["close"])
             h, l, v = float(r["high"]), float(r["low"]), float(r["volume"])
+            amt = float(r.get("amount") or 0.0)
         except (KeyError, TypeError, ValueError):
             continue
         pct = (c - prev) / prev * 100 if prev else 0.0
         amp = (h - l) / c * 100 if c else 0.0
-        out.append({"date": r["day"], "open": o, "close": c, "high": h, "low": l,
-                    "vol": v, "amount": 0.0, "amp": round(amp, 2),
+        out.append({"date": day, "open": o, "close": c, "high": h, "low": l,
+                    "vol": v, "amount": amt, "amp": round(amp, 2),
                     "pct": round(pct, 2), "change": round(c - prev, 2) if prev else 0.0,
                     "turnover": 0.0})
         prev = c
@@ -388,6 +391,45 @@ def _sina_k(sym, scale, lmt):
         return r.json() or []
     except Exception:
         return []
+
+
+def _em_klines(secid, klt=101, lmt=800):
+    """东财历史日K兜底：tdx/新浪/百度都失败时仍可训练回测。"""
+    fields2 = "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61"
+    data = em_get(
+        "https://push2his.eastmoney.com",
+        "/api/qt/stock/kline/get",
+        {
+            "secid": secid,
+            "klt": str(klt),
+            "fqt": "1",
+            "beg": "20180101",
+            "end": "20500101",
+            "fields1": "f1,f2,f3,f4,f5,f6",
+            "fields2": fields2,
+        },
+        timeout=12,
+        retries=2,
+    )
+    lines = ((data or {}).get("data") or {}).get("klines") or []
+    rows = []
+    for line in lines[-lmt:]:
+        parts = str(line).split(",")
+        if len(parts) < 7:
+            continue
+        try:
+            rows.append({
+                "date": parts[0],
+                "open": float(parts[1]),
+                "close": float(parts[2]),
+                "high": float(parts[3]),
+                "low": float(parts[4]),
+                "volume": float(parts[5]),
+                "amount": float(parts[6]),
+            })
+        except (TypeError, ValueError):
+            continue
+    return rows
 
 
 def baidu_kline(code, lmt=240):
@@ -482,6 +524,14 @@ def _tdx_klines(secid, klt, lmt):
 
 def _klines(secid, klt, lmt):
     """统一 K 线入口：通达信优先，失败回退新浪/百度。"""
+    if os.environ.get("ASTOCK_NO_TDX") == "1" and klt == 101:
+        out = _sina_to_internal(_em_klines(secid, klt, lmt))
+        if out:
+            return out
+        out = _sina_to_internal(_sina_k(_sina_symbol(secid), 240, lmt))
+        if out:
+            return out
+        return _sina_to_internal(baidu_kline(secid.split(".")[-1], lmt))
     try:
         if tdx.available():
             return _tdx_klines(secid, klt, lmt)
@@ -491,5 +541,7 @@ def _klines(secid, klt, lmt):
     scale = {101: 240, 5: 5, 60: 60, 15: 15}.get(klt, 240)
     out = _sina_to_internal(_sina_k(sym, scale, lmt))
     if not out and klt == 101:
-        out = _sina_to_internal(baidu_kline(secid.split(".")[-1], lmt))
+        out = _sina_to_internal(_em_klines(secid, klt, lmt))
+        if not out:
+            out = _sina_to_internal(baidu_kline(secid.split(".")[-1], lmt))
     return out

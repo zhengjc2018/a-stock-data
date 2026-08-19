@@ -74,12 +74,12 @@ def current_tail_metrics():
         return None
 
 
-def train_candidate(out_path):
+def train_candidate(out_path, limit=500):
     import train_gap_v2
 
     args = argparse.Namespace(
         codes=None,
-        limit=500,
+        limit=limit,
         trees=150,
         depth=3,
         start="2024-08-01",
@@ -96,12 +96,12 @@ def train_candidate(out_path):
     return payload
 
 
-def train_tail_candidate(out_path):
+def train_tail_candidate(out_path, limit=500):
     import train_gap_v2
 
     args = argparse.Namespace(
         codes=None,
-        limit=500,
+        limit=limit,
         trees=150,
         depth=3,
         start="2024-08-01",
@@ -226,6 +226,7 @@ def reject(new_metrics, reason):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", choices=("gap", "tail", "both"), default="both")
+    ap.add_argument("--limit", type=int, default=500)
     args = ap.parse_args()
     os.makedirs(OUT_DIR, exist_ok=True)
     results = {}
@@ -233,7 +234,7 @@ def main():
         cur = current_metrics()
         print("[auto_train] current gap", cur, flush=True)
         new_path = os.path.abspath(os.path.join(OUT_DIR, "..", "gap_candidate.json"))
-        new_model = train_candidate(new_path)
+        new_model = train_candidate(new_path, args.limit)
         new_metrics = new_model.get("metrics") or {}
         print("[auto_train] gap candidate", new_metrics, flush=True)
         if should_publish(cur, new_metrics):
@@ -248,7 +249,7 @@ def main():
         cur = current_tail_metrics()
         print("[auto_train] current tail", cur, flush=True)
         new_path = os.path.abspath(os.path.join(OUT_DIR, "..", "tail_candidate.json"))
-        new_model = train_tail_candidate(new_path)
+        new_model = train_tail_candidate(new_path, args.limit)
         new_metrics = new_model.get("metrics") or {}
         print("[auto_train] tail candidate", new_metrics, flush=True)
         if should_publish(cur, new_metrics):

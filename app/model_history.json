@@ -162,5 +162,22 @@
       "test_top3": 0.2667,
       "test_top10": 0.4533
     }
+  },
+  {
+    "ts": "2026-08-19 14:37:50",
+    "action": "publish_tail",
+    "reason": "tail metrics improved",
+    "new_hash": "d343e9a5d911",
+    "metrics": {
+      "base_rate": 0.2406,
+      "base_rate_net": 0.2105,
+      "test_auc": 0.6981,
+      "test_top1": 0.5333,
+      "test_top3": 0.8533,
+      "test_top10": 1.0,
+      "test_top1_net": 0.5067,
+      "test_top3_net": 0.8267,
+      "test_top10_net": 0.9867
+    }
   }
 ]

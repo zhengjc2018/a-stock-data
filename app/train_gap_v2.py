@@ -53,6 +53,7 @@ MODEL_FEATURES = [
 ] + [f for f in gap_pick.EXTRA_FEATURES]
 
 DAILY_BARS = 800
+_SAMPLE_INDUSTRY = {}
 
 
 def fetch_daily(code):
@@ -81,10 +82,15 @@ def fetch_daily(code):
 
 
 def sample_codes(limit):
+    global _SAMPLE_INDUSTRY
     snapshot = gap_pick.fetch_market_snapshot()
     if snapshot.empty:
         return []
     df = snapshot[snapshot["code"].astype(str).str.zfill(6).map(gap_pick._board_of) == "main"]
+    _SAMPLE_INDUSTRY = {
+        str(row["code"]).zfill(6): str(row.get("industry") or "")
+        for row in df.to_dict("records")
+    }
     codes = df["code"].astype(str).str.zfill(6).unique().tolist()
     if limit and limit < len(codes):
         rng = np.random.default_rng(42)
@@ -99,7 +105,8 @@ def collect_samples(codes, start, end, index_ret, index_ma5_up, label_gap, reach
 
     def _load(code):
         code = str(code).zfill(6)
-        return code, fetch_daily(code), (gap_pick._stock_industry(code) or "未知行业")
+        industry = _SAMPLE_INDUSTRY.get(code) or gap_pick._stock_industry(code) or "未知行业"
+        return code, fetch_daily(code), industry
 
     with ThreadPoolExecutor(max_workers=4, thread_name_prefix="gap-train") as ex:
         futures = [ex.submit(_load, c) for c in codes]
@@ -282,6 +289,8 @@ def export_gbdt(model, calib, features, metrics, start, end, n_samples):
 
 def prepare_data(args):
     """采集并构造训练数据集，返回 DataFrame；供训练和超参搜索复用。"""
+    # 批量训练/回测时跳过通达信连接池，避免间歇失败拖慢全样本采集。
+    os.environ.setdefault("ASTOCK_NO_TDX", "1")
     if args.codes:
         codes = [c.strip().zfill(6) for c in args.codes.split(",") if c.strip()]
     else:

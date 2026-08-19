@@ -10,6 +10,10 @@ app/android/app/src/main/python/
 app/android/local.properties
 app/dist/
 app/gap_candidate.json
+app/tail_candidate.json
 app/t_holdings.json
+app/backtest_report/realistic_backtest.csv
+app/backtest_report/rolling_eval.csv
+app/tail_state.json
 app/logs/
 .playwright-cli/

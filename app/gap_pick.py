@@ -936,11 +936,16 @@ def _compute(scope=None):
             else:
                 max_n = 1
                 min_prob = 0.45
-        filtered = [
-            c for c in scored
-            if (c.get("enhanced_prob") or 0) >= min_prob and
-               (c.get("industry_rank_prev") or 0) >= 0.3
-        ]
+        def _passes(c):
+            if (c.get("enhanced_prob") or 0) < min_prob:
+                return False
+            if (c.get("industry_rank_prev") or 0) < 0.3:
+                return False
+            if (c.get("main_net_yi") or 0) < 0 and (c.get("confirm_score") or 0) < 4:
+                return False
+            return True
+
+        filtered = [c for c in scored if _passes(c)]
         scored = filtered[:max_n]
     if not scored:
         note = "今日无推荐：候选未达置信度或市场/板块环境不满足"

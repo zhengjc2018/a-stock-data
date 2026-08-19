@@ -57,6 +57,20 @@ _SAMPLE_INDUSTRY = {}
 TRAIN_CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "train_cache")
 
 
+def _recompute_labels(df, reach, label_gap):
+    df = df.copy()
+    close = df["close"].astype(float)
+    if reach:
+        hit = pd.concat([df["next_open"], df["next_high"]], axis=1).max(axis=1) >= close * (1 + label_gap)
+        hit_net = pd.concat([df["next_open"], df["next_high"]], axis=1).max(axis=1) >= close * (1 + label_gap + 0.003)
+    else:
+        hit = df["next_open"].astype(float) >= close * (1 + label_gap)
+        hit_net = df["next_open"].astype(float) >= close * (1 + label_gap + 0.003)
+    df["label"] = hit.astype(int)
+    df["label_net"] = hit_net.astype(int)
+    return df
+
+
 def fetch_daily(code):
     secid = f"{'1' if code.startswith('6') else '0'}.{code}"
     try:
@@ -295,13 +309,22 @@ def prepare_data(args):
     limit = getattr(args, "limit", 0) or 0
     reach = bool(getattr(args, "reach", False))
     label_gap = float(getattr(args, "label_gap", 0.03))
-    cache_path = os.path.join(
+    exact_path = os.path.join(
         TRAIN_CACHE_DIR,
         f"train_{args.start}_{args.end}_gap{label_gap}_reach{int(reach)}_n{limit}.csv",
     )
-    if os.path.isfile(cache_path):
-        df = pd.read_csv(cache_path)
-        print(f"[train] loaded cache {cache_path} ({len(df)} rows)", flush=True)
+    alt_path = os.path.join(
+        TRAIN_CACHE_DIR,
+        f"train_{args.start}_{args.end}_gap{label_gap}_reach{int(not reach)}_n{limit}.csv",
+    )
+    if os.path.isfile(exact_path):
+        df = pd.read_csv(exact_path)
+        print(f"[train] loaded cache {exact_path} ({len(df)} rows)", flush=True)
+        return df
+    if os.path.isfile(alt_path):
+        df = _recompute_labels(pd.read_csv(alt_path), reach, label_gap)
+        print(f"[train] loaded cache {alt_path} and recomputed {reach=} labels ({len(df)} rows)",
+              flush=True)
         return df
     if args.codes:
         codes = [c.strip().zfill(6) for c in args.codes.split(",") if c.strip()]
@@ -360,8 +383,8 @@ def prepare_data(args):
             lambda r: heat.get((r["date"], r["industry"]), 0), axis=1)
         print("[train] zt heat joined", flush=True)
     os.makedirs(TRAIN_CACHE_DIR, exist_ok=True)
-    df.to_csv(cache_path, index=False)
-    print(f"[train] cached {cache_path} ({len(df)} rows)", flush=True)
+    df.to_csv(exact_path, index=False)
+    print(f"[train] cached {exact_path} ({len(df)} rows)", flush=True)
     return df
 
 

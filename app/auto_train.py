@@ -163,17 +163,29 @@ def download_model():
 def should_publish(cur, new):
     if not cur:
         return True
-    gain_top1 = float(new.get("test_top1") or 0) - float(cur.get("test_top1") or 0)
-    gain_top3 = float(new.get("test_top3") or 0) - float(cur.get("test_top3") or 0)
-    gain_top10 = float(new.get("test_top10") or 0) - float(cur.get("test_top10") or 0)
+    raw_keys = ("test_top1", "test_top3", "test_top10")
+    net_keys = ("test_top1_net", "test_top3_net", "test_top10_net")
+    raw_gains = [
+        float(new.get(k) or 0) - float(cur.get(k) or 0)
+        for k in raw_keys
+    ]
     gain_auc = float(new.get("test_auc") or 0) - float(cur.get("test_auc") or 0)
-    gain_top1_net = float(new.get("test_top1_net") or 0) - float(cur.get("test_top1_net") or 0)
-    gain_top3_net = float(new.get("test_top3_net") or 0) - float(cur.get("test_top3_net") or 0)
-    gain_top10_net = float(new.get("test_top10_net") or 0) - float(cur.get("test_top10_net") or 0)
-    return (gain_top10 >= 0.005 or gain_top3 >= 0.02 or gain_top1 >= 0.03
-            or gain_top10_net >= 0.01 or gain_top3_net >= 0.02
-            or gain_top1_net >= 0.03
-            or (gain_top10 >= 0 and gain_auc >= 0.003))
+    has_net = all(k in cur and k in new for k in net_keys)
+    net_gains = [
+        float(new.get(k) or 0) - float(cur.get(k) or 0)
+        for k in net_keys
+    ] if has_net else [0.0, 0.0, 0.0]
+    improved_raw = max(raw_gains) >= 0.01
+    no_raw_regression = all(g >= -0.005 for g in raw_gains)
+    improved_net = has_net and max(net_gains) >= 0.02
+    no_net_regression = not has_net or all(g >= -0.01 for g in net_gains)
+    auc_ok = gain_auc >= -0.002
+    return (
+        (improved_raw or improved_net)
+        and no_raw_regression
+        and no_net_regression
+        and auc_ok
+    )
 
 
 def publish(new_path, new_metrics, reason):

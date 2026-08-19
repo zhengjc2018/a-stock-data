@@ -179,5 +179,35 @@
       "test_top3_net": 0.8267,
       "test_top10_net": 0.9867
     }
+  },
+  {
+    "ts": "2026-08-19 15:38:04",
+    "action": "publish",
+    "reason": "metrics improved",
+    "new_hash": "2668c124f620",
+    "metrics": {
+      "base_rate": 0.0114,
+      "base_rate_net": 0.0096,
+      "test_auc": 0.773,
+      "test_top1": 0.0667,
+      "test_top3": 0.1467,
+      "test_top10": 0.28,
+      "test_top1_net": 0.0667,
+      "test_top3_net": 0.1333,
+      "test_top10_net": 0.2667
+    }
+  },
+  {
+    "ts": "2026-08-19 15:38:32",
+    "action": "rollback",
+    "reason": "candidate degraded top1/top3/top10 despite auc gain; missing net metrics caused false publish",
+    "new_hash": "c9f12b5868dd",
+    "metrics": {
+      "base_rate": 0.0126,
+      "test_auc": 0.7569,
+      "test_top1": 0.473,
+      "test_top3": 0.5811,
+      "test_top10": 0.6486
+    }
   }
 ]

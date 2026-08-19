@@ -91,6 +91,11 @@ def main():
         "avg_net_ret": round(sum(float(s.get("ret") or 0) for s in verified) / len(verified), 4)
         if verified else None,
     }
+    import trend_report
+    report["trend"] = {
+        "selection_top3": trend_report.selection_trend(),
+        "t_win": trend_report.t_trend(),
+    }
 
     if args.full:
         print("[health] running realistic backtest...", flush=True)

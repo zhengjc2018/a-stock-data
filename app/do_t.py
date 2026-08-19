@@ -17,6 +17,7 @@ import t_strategy
 
 CN_TZ = timezone(timedelta(hours=8))
 STATE_FILE = paths.data_path("t_holdings.json")
+SIGNAL_FILE = paths.data_path("t_signal_ledger.json")
 STATE_LOCK = threading.RLock()
 _MONITOR = {"thread": None, "stop": False, "running": False}
 _CACHE = {"bars": {"ts": 0, "data": {}}, "fund": {"ts": 0, "data": {}}}
@@ -31,6 +32,8 @@ DEFAULT_STATE = {
     "daily_count": {},
     "last_check": None,
 }
+
+T_COST_RATE = 0.0012
 
 
 def _now():
@@ -57,6 +60,129 @@ def save_state(state):
     with STATE_LOCK:
         with open(STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, ensure_ascii=False, indent=2)
+
+
+def load_ledger():
+    with STATE_LOCK:
+        if not os.path.isfile(SIGNAL_FILE):
+            return []
+        try:
+            with open(SIGNAL_FILE, encoding="utf-8") as f:
+                ledger = json.load(f)
+            return ledger if isinstance(ledger, list) else []
+        except Exception:
+            return []
+
+
+def save_ledger(ledger):
+    with STATE_LOCK:
+        with open(SIGNAL_FILE, "w", encoding="utf-8") as f:
+            json.dump(ledger, f, ensure_ascii=False, indent=2)
+
+
+def _record_signal(sig):
+    ledger = load_ledger()
+    sig_id = f"{sig['code']}-{sig['side']}-{sig['dt']}"
+    if any(x.get("id") == sig_id for x in ledger):
+        return
+    ledger.insert(0, {
+        "id": sig_id,
+        "ts": int(time.time()),
+        "status": "pending",
+        **sig,
+    })
+    del ledger[1000:]
+    save_ledger(ledger)
+
+
+def _resolve_signal_outcome(sig):
+    code = sig.get("code")
+    if not code:
+        return None
+    symbol, _ = _symbol_secid(code)
+    bars = _bars_cache(symbol, 1)
+    if bars.empty:
+        return None
+    matches = bars.index[bars["dt"] == sig.get("dt")].tolist()
+    if not matches:
+        return None
+    i = int(matches[0])
+    if i + 1 >= len(bars):
+        return None
+    params, _ = _resolve_params(code)
+    entry = float(sig.get("price") or bars.iloc[i]["close"])
+    day = str(bars.iloc[i]["day"])
+    target = float(params.get("target", 0.005))
+    stop = float(params.get("stop", 0.005))
+    horizon = int(params.get("horizon", 12))
+    side = sig.get("side")
+    ret = None
+    for j in range(i + 1, min(i + 1 + horizon, len(bars))):
+        r = bars.iloc[j]
+        if str(r["day"]) != day:
+            break
+        if side == "buy":
+            if float(r["high"]) >= entry * (1 + target + T_COST_RATE):
+                return {"status": "verified", "outcome": "win", "ret": round(target, 4)}
+            if float(r["low"]) <= entry * (1 - stop - T_COST_RATE):
+                return {"status": "verified", "outcome": "loss", "ret": round(-stop, 4)}
+        else:
+            if float(r["low"]) <= entry * (1 - target - T_COST_RATE):
+                return {"status": "verified", "outcome": "win", "ret": round(target, 4)}
+            if float(r["high"]) >= entry * (1 + stop + T_COST_RATE):
+                return {"status": "verified", "outcome": "loss", "ret": round(-stop, 4)}
+    nxt = bars.iloc[i + 1]
+    if str(nxt["day"]) == day:
+        close_ret = float(nxt["close"]) / entry - 1 - T_COST_RATE
+        if side == "sell":
+            close_ret = -close_ret
+        return {
+            "status": "verified",
+            "outcome": "win" if close_ret > 0 else "loss",
+            "ret": round(close_ret, 4),
+        }
+    return {"status": "open", "outcome": None, "ret": None}
+
+
+def verify_ledger():
+    ledger = load_ledger()
+    changed = False
+    for sig in ledger:
+        if sig.get("status") != "pending":
+            continue
+        if time.time() - sig.get("ts", 0) < 60 * 14:
+            continue
+        try:
+            result = _resolve_signal_outcome(sig)
+        except Exception:
+            result = None
+        if result:
+            sig.update(result)
+            changed = True
+    if changed:
+        save_ledger(ledger)
+    return ledger
+
+
+def t_stats():
+    ledger = load_ledger()
+    verified = [s for s in ledger if s.get("status") == "verified"]
+    buys = [s for s in verified if s.get("side") == "buy"]
+    sells = [s for s in verified if s.get("side") == "sell"]
+
+    def _rate(items):
+        if not items:
+            return None
+        return round(sum(1 for x in items if x.get("outcome") == "win") / len(items), 4)
+
+    return {
+        "signals": len(ledger),
+        "verified": len(verified),
+        "win_rate": _rate(verified),
+        "buy_win_rate": _rate(buys),
+        "sell_win_rate": _rate(sells),
+        "recent": verified[-20:],
+    }
 
 
 def _bars_cache(symbol, scale=1):
@@ -189,7 +315,6 @@ def _compute_signal(code, name, cost, qty):
     if signal:
         signal["cost"] = cost
         signal["qty"] = qty
-        signal["profile"] = profile.get("profile") if profile else None
     return signal
 
 
@@ -267,11 +392,16 @@ def check_once():
             signals.append(sig)
             state["signals"].insert(0, sig)
             state["signals"] = state["signals"][:50]
+            _record_signal(sig)
             notify(f"做T信号 {sig['code']} {sig['name']}",
                    f"{'买入' if sig['side'] == 'buy' else '卖出'} @ {sig['price']}")
             _auto_execute(state, sig)
     state["last_check"] = _now()
     save_state(state)
+    try:
+        verify_ledger()
+    except Exception as e:
+        print(f"[do_t] ledger verify err: {e}", flush=True)
     try:
         import portfolio
         portfolio.record_equity()

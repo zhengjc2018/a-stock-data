@@ -420,6 +420,7 @@ def api_strategy_health():
         "tail_model": tail_model.meta(),
         "history": history[-20:],
         "stats": _outcome_stats(),
+        "t_stats": do_t.t_stats(),
     })
 
 

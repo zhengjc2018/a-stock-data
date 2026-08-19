@@ -52,9 +52,20 @@ MODEL_FEATURES = [
     "industry_rank_prev",
 ] + [f for f in gap_pick.EXTRA_FEATURES]
 
+RANK_SOURCE_FEATURES = gap_pick.RANK_SOURCE_FEATURES
+MODEL_FEATURES += [f"rank_{x}" for x in RANK_SOURCE_FEATURES]
+
 DAILY_BARS = 800
 _SAMPLE_INDUSTRY = {}
 TRAIN_CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "train_cache")
+
+
+def _add_cross_sectional_ranks(df):
+    out = df.copy()
+    for name in RANK_SOURCE_FEATURES:
+        if name in out.columns:
+            out[f"rank_{name}"] = out.groupby("date")[name].rank(pct=True).fillna(0.5)
+    return out
 
 
 def _recompute_labels(df, reach, label_gap):
@@ -320,9 +331,9 @@ def prepare_data(args):
     if os.path.isfile(exact_path):
         df = pd.read_csv(exact_path)
         print(f"[train] loaded cache {exact_path} ({len(df)} rows)", flush=True)
-        return df
+        return _add_cross_sectional_ranks(df)
     if os.path.isfile(alt_path):
-        df = _recompute_labels(pd.read_csv(alt_path), reach, label_gap)
+        df = _recompute_labels(_add_cross_sectional_ranks(pd.read_csv(alt_path)), reach, label_gap)
         print(f"[train] loaded cache {alt_path} and recomputed {reach=} labels ({len(df)} rows)",
               flush=True)
         return df
@@ -382,6 +393,7 @@ def prepare_data(args):
         df["industry_zt_count"] = df.apply(
             lambda r: heat.get((r["date"], r["industry"]), 0), axis=1)
         print("[train] zt heat joined", flush=True)
+    df = _add_cross_sectional_ranks(df)
     os.makedirs(TRAIN_CACHE_DIR, exist_ok=True)
     df.to_csv(exact_path, index=False)
     print(f"[train] cached {exact_path} ({len(df)} rows)", flush=True)

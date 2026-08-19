@@ -80,6 +80,18 @@ EXTRA_FEATURES = [
     "volume_price_divergence", "limit_up_history_60",
 ]
 
+RANK_SOURCE_FEATURES = [
+    "pct_chg",
+    "vol_ratio_5",
+    "amplitude_pct",
+    "amount_yi",
+    "pos_ma20",
+    "ret_5",
+    "macd_hist",
+    "rsi6",
+    "industry_mean_prev",
+]
+
 _GAP_CACHE = {"ts": 0, "data": None, "computing": False, "last_err": None}
 _GAP_LOCK = threading.Lock()
 
@@ -660,6 +672,11 @@ def build_candidates(
         candidate["industry_zt_count"] = candidate["industry_limit_count"]
         candidate["industry_mean_prev"] = float(industry_mean_map.get(candidate["industry"], 0.0))
         candidate["industry_rank_prev"] = float(industry_rank_map.get(candidate["industry"], 0.0))
+    rank_df = pd.DataFrame(out)
+    for name in RANK_SOURCE_FEATURES:
+        if name in rank_df.columns:
+            rank_df[f"rank_{name}"] = rank_df[name].rank(pct=True).fillna(0.5)
+    out = rank_df.to_dict("records")
     return out
 
 

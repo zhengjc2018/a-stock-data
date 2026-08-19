@@ -17,7 +17,7 @@ import pandas as pd
 import t_strategy
 
 
-def _best_params(train_df):
+def _best_params(train_df, baseline_params):
     grid = t_strategy.build_grid()
     best = None
     for p in grid:
@@ -32,13 +32,16 @@ def _best_params(train_df):
             best = (key, p, res)
     if best:
         return best[1], best[2]
-    return dict(t_strategy.DEFAULT_PARAMS), {"combined": {"signals": 0, "win_rate": None}}
+    return baseline_params, {"combined": {"signals": 0, "win_rate": None}}
 
 
 def run_stock(code, symbol, secid):
     intraday = t_strategy.fetch_kline(symbol, 5, 1023)
     if intraday.empty or len(intraday) < 120:
         return []
+    daily = t_strategy.fetch_kline(symbol, 240, 120)
+    profile = t_strategy.profile_stock(daily, intraday) if not daily.empty else None
+    profile_params = t_strategy.params_for_profile(profile)
     fund = t_strategy.fetch_fund_flow(secid)
     df = t_strategy.add_signals_features(intraday, fund)
     df["main_net_prev"] = df["main_net_prev"].fillna(0)
@@ -62,19 +65,29 @@ def run_stock(code, symbol, secid):
         test = df[(df["day"] > cutoff) & (df["day"] <= end)].copy()
         if len(train) < 300 or test.empty:
             continue
-        params, _ = _best_params(train)
+        params, _ = _best_params(train, profile_params)
         buy, sell = t_strategy.signal_indices(test, params)
         res = t_strategy.summarize(t_strategy.target_stop_winrate(test, buy, sell, params))
+        base_buy, base_sell = t_strategy.signal_indices(test, profile_params)
+        base_res = t_strategy.summarize(
+            t_strategy.target_stop_winrate(test, base_buy, base_sell, profile_params))
         rows.append({
             "code": code,
             "cutoff": cutoff,
             "end": end,
+            "trend": (profile or {}).get("trend", ""),
+            "volatility": (profile or {}).get("volatility", ""),
             "buy_signals": res["buy"]["signals"],
             "buy_win_rate": res["buy"]["win_rate"],
             "sell_signals": res["sell"]["signals"],
             "sell_win_rate": res["sell"]["win_rate"],
             "combined_signals": res["combined"]["signals"],
             "combined_win_rate": res["combined"]["win_rate"],
+            "profile_buy_signals": base_res["buy"]["signals"],
+            "profile_buy_win_rate": base_res["buy"]["win_rate"],
+            "profile_sell_signals": base_res["sell"]["signals"],
+            "profile_sell_win_rate": base_res["sell"]["win_rate"],
+            "profile_combined_win_rate": base_res["combined"]["win_rate"],
         })
     return rows
 
@@ -107,6 +120,12 @@ def main():
         "min_combined_win": round(float(out["combined_win_rate"].min()), 4),
         "mean_buy_win": round(float(out["buy_win_rate"].mean()), 4),
         "mean_sell_win": round(float(out["sell_win_rate"].mean()), 4),
+        "mean_optimized_win": round(float(out["combined_win_rate"].mean()), 4),
+        "mean_profile_win": round(float(out["profile_combined_win_rate"].mean()), 4),
+        "profile_wins": int((out["combined_win_rate"].fillna(0) >
+                            out["profile_combined_win_rate"].fillna(0)).sum()),
+        "profile_ties": int((out["combined_win_rate"].fillna(0) ==
+                             out["profile_combined_win_rate"].fillna(0)).sum()),
     }
     print("[t-rolling] summary", summary)
     print("saved", args.out)

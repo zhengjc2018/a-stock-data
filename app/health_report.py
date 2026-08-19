@@ -96,7 +96,7 @@ def main():
                         "--out", "/tmp/health_realistic.csv"], check=False)
         realistic = _read_csv_summary(
             "/tmp/health_realistic.csv",
-            ["top3_net", "top5_net", "win_rate", "avg_net_ret"])
+            ["hit_rate_net", "trade_win_rate", "trade_avg_net_ret", "trade_top3_day_win"])
         report["realistic_backtest"] = realistic
         print("[health] running T rolling...", flush=True)
         subprocess.run([sys.executable, "backtest_t_rolling.py",

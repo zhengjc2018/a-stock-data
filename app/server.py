@@ -527,6 +527,10 @@ def start_background():
         except Exception:
             pass
         try:
+            do_t.verify_ledger()
+        except Exception:
+            pass
+        try:
             if do_t.load_state().get("monitoring"):
                 do_t.start()
         except Exception:

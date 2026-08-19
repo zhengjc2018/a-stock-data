@@ -225,14 +225,22 @@ def api_gap_premarket():
         status = "保留"
         if 0.5 <= gap_pct <= 5:
             boost += 0.02
+            if auction_ratio is not None and auction_ratio >= 1.0:
+                status = "确认"
         elif gap_pct > 7:
             boost -= 0.05
             status = "降级"
         elif gap_pct < 0.5:
             boost -= 0.03
             status = "降级"
-        if auction_ratio is not None and auction_ratio > 1.2:
-            boost += 0.01
+        if auction_ratio is not None:
+            if auction_ratio >= 1.5:
+                boost += 0.02
+            elif auction_ratio >= 1.0:
+                boost += 0.01
+            elif auction_ratio < 0.6:
+                boost -= 0.04
+                status = "量能不足"
         confirmed.append({
             "code": c["code"],
             "name": c.get("name", ""),

@@ -24,6 +24,7 @@ import paths
 OUT_DIR = paths.data_path("outcomes")
 GAP_SCOPE = {"main": True, "chi_next": False, "st": False}
 TOP_N = 100
+LABEL_GAP = 0.03
 CN_TZ = timezone(timedelta(hours=8))
 
 
@@ -102,16 +103,19 @@ def verify_pending():
         for c in cand.get("candidates", []):
             q = quotes.get(c["code"]) or {}
             open_ = q.get("open")
+            high = q.get("high")
             prev = c.get("price")
             if not open_ or not prev:
                 continue
-            pct = (open_ / prev - 1) * 100
+            open_pct = (open_ / prev - 1) * 100
+            high_pct = ((high or open_) / prev - 1) * 100
             results.append({
                 "code": c["code"],
                 "name": c.get("name", ""),
                 "open": round(open_, 3),
-                "pct": round(pct, 2),
-                "hit": pct >= 1.0,
+                "open_pct": round(open_pct, 2),
+                "high_pct": round(high_pct, 2),
+                "hit": max(open_pct, high_pct) >= LABEL_GAP * 100,
             })
         payload = {
             "date": date,

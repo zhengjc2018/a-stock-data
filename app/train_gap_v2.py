@@ -329,14 +329,18 @@ def prepare_data(args):
         f"train_{args.start}_{args.end}_gap{label_gap}_reach{int(not reach)}_n{limit}.csv",
     )
     if os.path.isfile(exact_path):
-        df = pd.read_csv(exact_path)
-        print(f"[train] loaded cache {exact_path} ({len(df)} rows)", flush=True)
-        return _add_cross_sectional_ranks(df)
+        if time.time() - os.path.getmtime(exact_path) < 12 * 3600:
+            df = pd.read_csv(exact_path)
+            print(f"[train] loaded cache {exact_path} ({len(df)} rows)", flush=True)
+            return _add_cross_sectional_ranks(df)
+        print(f"[train] cache stale, refetching: {exact_path}", flush=True)
     if os.path.isfile(alt_path):
-        df = _recompute_labels(_add_cross_sectional_ranks(pd.read_csv(alt_path)), reach, label_gap)
-        print(f"[train] loaded cache {alt_path} and recomputed {reach=} labels ({len(df)} rows)",
-              flush=True)
-        return df
+        if time.time() - os.path.getmtime(alt_path) < 12 * 3600:
+            df = _recompute_labels(_add_cross_sectional_ranks(pd.read_csv(alt_path)), reach, label_gap)
+            print(f"[train] loaded cache {alt_path} and recomputed {reach=} labels ({len(df)} rows)",
+                  flush=True)
+            return df
+        print(f"[train] cache stale, refetching: {alt_path}", flush=True)
     if args.codes:
         codes = [c.strip().zfill(6) for c in args.codes.split(",") if c.strip()]
     else:

@@ -12,6 +12,7 @@ import time
 from datetime import datetime, timedelta, timezone
 
 import paths
+import do_t
 
 CN_TZ = timezone(timedelta(hours=8))
 
@@ -126,6 +127,15 @@ def confidence_filter_suggestion(rows):
     return {"suggest": False, "reason": "高置信信号优势未达到5个百分点"}
 
 
+def apply_confidence_suggestion(suggestion):
+    if not suggestion.get("suggest"):
+        return False
+    cfg = do_t._load_t_config()
+    cfg["confidence_filter"] = float(suggestion.get("min_confidence", 0.8))
+    do_t.save_t_config(cfg)
+    return True
+
+
 def run():
     selection = selection_trend()
     t = t_trend()
@@ -150,6 +160,8 @@ def run():
         summary["t_delta_pp"] = round((cur - prev) * 100, 2)
         if summary["t_delta_pp"] < -5:
             summary["alerts"].append("做T胜率较上周下降超过5个百分点")
+    summary["t_confidence_filter_applied"] = apply_confidence_suggestion(
+        summary["t_confidence_filter"])
     out_path = paths.bundle_path("backtest_report", "trend_report.json")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:

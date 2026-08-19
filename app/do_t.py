@@ -18,6 +18,7 @@ import t_strategy
 CN_TZ = timezone(timedelta(hours=8))
 STATE_FILE = paths.data_path("t_holdings.json")
 SIGNAL_FILE = paths.data_path("t_signal_ledger.json")
+T_CONFIG_FILE = paths.data_path("t_config.json")
 STATE_LOCK = threading.RLock()
 _MONITOR = {"thread": None, "stop": False, "running": False}
 _CACHE = {"bars": {"ts": 0, "data": {}}, "fund": {"ts": 0, "data": {}}}
@@ -93,6 +94,23 @@ def _record_signal(sig):
     })
     del ledger[1000:]
     save_ledger(ledger)
+
+
+def _load_t_config():
+    if not os.path.isfile(T_CONFIG_FILE):
+        return {}
+    try:
+        with open(T_CONFIG_FILE, encoding="utf-8") as f:
+            cfg = json.load(f)
+        return cfg if isinstance(cfg, dict) else {}
+    except Exception:
+        return {}
+
+
+def save_t_config(cfg):
+    with STATE_LOCK:
+        with open(T_CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=2)
 
 
 def _resolve_signal_outcome(sig):
@@ -330,6 +348,9 @@ def _compute_signal(code, name, cost, qty, profile=None):
         buy_score, sell_score = t_strategy._score_row(df.iloc[-1], params)
         signal["score"] = int(buy_score if signal["side"] == "buy" else sell_score)
         signal["confidence"] = round(signal["score"] / 5.0, 2)
+        min_conf = float(_load_t_config().get("confidence_filter") or 0)
+        if signal["confidence"] < min_conf:
+            return None
         signal["cost"] = cost
         signal["qty"] = qty
     return signal

@@ -13,6 +13,7 @@ app/gap_candidate.json
 app/tail_candidate.json
 app/t_holdings.json
 app/t_signal_ledger.json
+app/t_config.json
 app/train_cache/
 app/backtest_report/realistic_backtest.csv
 app/backtest_report/rolling_eval.csv

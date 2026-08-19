@@ -17,6 +17,7 @@ import time
 
 import requests
 
+import gap_model
 import paths
 
 APP_DIR = paths.APP_DIR
@@ -72,6 +73,48 @@ def current_tail_metrics():
         return raw.get("metrics")
     except Exception:
         return None
+
+
+def _load_validated(path):
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        return gap_model._validate(json.load(f))
+
+
+def rolling_metrics_for_model(model_path, df):
+    """用滚动窗口统计一个模型在样本外的 Top3 净命中稳定性。"""
+    import train_gap_v2
+
+    model = _load_validated(model_path)
+    if model is None or df is None:
+        return None
+    dates = sorted(df["date"].unique())
+    if len(dates) < 150:
+        return None
+    feature_names = model["features"]
+    values = []
+    for i in range(120, len(dates), 30):
+        cutoff = dates[i - 1]
+        end = dates[min(i - 1 + 30, len(dates) - 1)]
+        test = df[(df["date"] > cutoff) & (df["date"] <= end)].copy()
+        if len(test) < 30:
+            continue
+        probs = []
+        for rec in test.to_dict("records"):
+            feats = {k: rec.get(k) for k in feature_names}
+            probs.append(gap_model.score_model(model, feats))
+        test["prob"] = probs
+        top3 = train_gap_v2.topk_rates(test, "prob", (3,), "label_net")[3]
+        values.append(top3)
+    if not values:
+        return None
+    return {
+        "windows": len(values),
+        "mean": round(float(sum(values)) / len(values), 4),
+        "min": round(float(min(values)), 4),
+        "max": round(float(max(values)), 4),
+    }
 
 
 def train_candidate(out_path, limit=500):
@@ -239,6 +282,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", choices=("gap", "tail", "both"), default="both")
     ap.add_argument("--limit", type=int, default=500)
+    ap.add_argument("--rolling", action="store_true",
+                    help="发布前额外跑滚动样本外验证，要求稳定性达标")
     args = ap.parse_args()
     os.makedirs(OUT_DIR, exist_ok=True)
     results = {}
@@ -249,14 +294,37 @@ def main():
         new_model = train_candidate(new_path, args.limit)
         new_metrics = new_model.get("metrics") or {}
         print("[auto_train] gap candidate", new_metrics, flush=True)
-        if should_publish(cur, new_metrics):
+        rolling_ok = True
+        rolling = None
+        if args.rolling:
+            import train_gap_v2
+            data_args = argparse.Namespace(
+                codes=None, limit=args.limit, start="2024-08-01",
+                end=time.strftime("%Y-%m-%d"), out="/tmp/auto_rolling_tmp.json",
+                no_zt_heat=True, outcomes_dir=OUT_DIR, label_gap=0.03,
+                trees=150, depth=3, reach=False)
+            df = train_gap_v2.prepare_data(data_args)
+            cur_roll = rolling_metrics_for_model(MODEL_FILE, df)
+            new_roll = rolling_metrics_for_model(new_path, df)
+            rolling = {"current": cur_roll, "candidate": new_roll}
+            print("[auto_train] rolling", rolling, flush=True)
+            if cur_roll and new_roll:
+                rolling_ok = (new_roll["mean"] >= 0.75 and
+                              new_roll["mean"] >= cur_roll["mean"] - 0.02)
+        if should_publish(cur, new_metrics) and rolling_ok:
             reason = "first publish" if not cur else "metrics improved"
+            if args.rolling and rolling and rolling.get("candidate"):
+                reason += f" | rolling mean={rolling['candidate']['mean']}"
             publish(new_path, new_metrics, reason)
-            results["gap"] = {"action": "publish", "reason": reason, "metrics": new_metrics}
+            results["gap"] = {"action": "publish", "reason": reason,
+                              "metrics": new_metrics, "rolling": rolling}
         else:
             reason = "not better than current model"
+            if args.rolling and rolling and not rolling_ok:
+                reason += " or rolling stability not met"
             reject(new_metrics, reason)
-            results["gap"] = {"action": "reject", "reason": reason, "metrics": new_metrics}
+            results["gap"] = {"action": "reject", "reason": reason,
+                              "metrics": new_metrics, "rolling": rolling}
     if args.model in ("tail", "both"):
         cur = current_tail_metrics()
         print("[auto_train] current tail", cur, flush=True)
@@ -264,14 +332,37 @@ def main():
         new_model = train_tail_candidate(new_path, args.limit)
         new_metrics = new_model.get("metrics") or {}
         print("[auto_train] tail candidate", new_metrics, flush=True)
-        if should_publish(cur, new_metrics):
+        rolling_ok = True
+        rolling = None
+        if args.rolling:
+            import train_gap_v2
+            data_args = argparse.Namespace(
+                codes=None, limit=args.limit, start="2024-08-01",
+                end=time.strftime("%Y-%m-%d"), out="/tmp/auto_rolling_tmp.json",
+                no_zt_heat=True, outcomes_dir=OUT_DIR, label_gap=0.03,
+                trees=150, depth=3, reach=True)
+            df = train_gap_v2.prepare_data(data_args)
+            cur_roll = rolling_metrics_for_model(TAIL_MODEL_FILE, df)
+            new_roll = rolling_metrics_for_model(new_path, df)
+            rolling = {"current": cur_roll, "candidate": new_roll}
+            print("[auto_train] tail rolling", rolling, flush=True)
+            if cur_roll and new_roll:
+                rolling_ok = (new_roll["mean"] >= 0.75 and
+                              new_roll["mean"] >= cur_roll["mean"] - 0.02)
+        if should_publish(cur, new_metrics) and rolling_ok:
             reason = "first publish" if not cur else "tail metrics improved"
+            if args.rolling and rolling and rolling.get("candidate"):
+                reason += f" | rolling mean={rolling['candidate']['mean']}"
             publish_tail(new_path, new_metrics, reason)
-            results["tail"] = {"action": "publish", "reason": reason, "metrics": new_metrics}
+            results["tail"] = {"action": "publish", "reason": reason,
+                               "metrics": new_metrics, "rolling": rolling}
         else:
             reason = "not better than current tail model"
+            if args.rolling and rolling and not rolling_ok:
+                reason += " or rolling stability not met"
             reject(new_metrics, reason)
-            results["tail"] = {"action": "reject", "reason": reason, "metrics": new_metrics}
+            results["tail"] = {"action": "reject", "reason": reason,
+                               "metrics": new_metrics, "rolling": rolling}
     return results
 
 

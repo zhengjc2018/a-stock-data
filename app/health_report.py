@@ -95,6 +95,7 @@ def main():
     report["trend"] = {
         "selection_top3": trend_report.selection_trend(),
         "t_win": trend_report.t_trend(),
+        "t_confidence": trend_report.t_confidence_analysis(),
     }
 
     if args.full:

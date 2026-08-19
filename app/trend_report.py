@@ -85,6 +85,29 @@ def t_trend():
     return rows
 
 
+def t_confidence_analysis():
+    ledger = _read_json(paths.data_path("t_signal_ledger.json")) or []
+    verified = [s for s in ledger if s.get("status") == "verified"]
+    buckets = {"high": [], "mid": [], "low": []}
+    for s in verified:
+        conf = float(s.get("confidence") or 0)
+        key = "high" if conf >= 0.8 else ("mid" if conf >= 0.6 else "low")
+        buckets[key].append(s)
+    rows = []
+    for key, items in buckets.items():
+        if not items:
+            continue
+        wins = sum(1 for s in items if s.get("outcome") == "win")
+        avg = sum(float(s.get("ret") or 0) for s in items) / len(items)
+        rows.append({
+            "bucket": key,
+            "signals": len(items),
+            "win_rate": round(wins / len(items), 4),
+            "avg_net_ret": round(avg, 4),
+        })
+    return rows
+
+
 def run():
     selection = selection_trend()
     t = t_trend()
@@ -92,6 +115,7 @@ def run():
         "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
         "selection_top3_trend": selection,
         "t_win_trend": t,
+        "t_confidence": t_confidence_analysis(),
     }
     if len(selection) >= 2:
         cur = selection[-1]["top3_rate"] or 0

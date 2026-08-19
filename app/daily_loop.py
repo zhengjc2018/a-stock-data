@@ -138,7 +138,7 @@ def run_auto():
         record_candidates()
         if now.weekday() == 6:
             import auto_train
-            auto_train.main()
+            auto_train.main(["--model", "both", "--limit", "400", "--rolling"])
 
 
 def main():

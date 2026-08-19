@@ -278,13 +278,13 @@ def reject(new_metrics, reason):
     print(f"[auto_train] rejected, reason={reason}", flush=True)
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", choices=("gap", "tail", "both"), default="both")
     ap.add_argument("--limit", type=int, default=500)
     ap.add_argument("--rolling", action="store_true",
                     help="发布前额外跑滚动样本外验证，要求稳定性达标")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     os.makedirs(OUT_DIR, exist_ok=True)
     results = {}
     if args.model in ("gap", "both"):

@@ -706,10 +706,11 @@ def score_candidates(candidates: list[dict]) -> list[dict]:
         def _tail(row):
             return tail_model.score({k: row.get(k) for k in tail_feats})
         df["tail_prob"] = df.apply(_tail, axis=1)
-    if df["prob"].notna().any():
+    primary = "tail_prob" if df["tail_prob"].notna().any() else "prob"
+    if df[primary].notna().any():
         df = df.sort_values(
-            ["prob", "score", "industry_limit_count"],
-            ascending=[False, False, False],
+            [primary, "prob", "score", "industry_limit_count"],
+            ascending=[False, False, False, False],
             na_position="last",
         )
     else:

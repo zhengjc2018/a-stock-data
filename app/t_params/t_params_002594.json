@@ -3,14 +3,14 @@
   "profile": {
     "trend": "震荡",
     "volatility": "中波动",
-    "ret_20": -0.0506,
+    "ret_20": -0.0318,
     "avg_daily_amp": 0.0285,
     "avg_bar_range": 0.00264,
-    "vol_ratio_5_20": 0.529,
-    "vwap_dev_avg": 0.00354,
-    "ma5": 89.69,
-    "ma20": 91.71,
-    "ma60": 90.2
+    "vol_ratio_5_20": 0.572,
+    "vwap_dev_avg": 0.00353,
+    "ma5": 89.34,
+    "ma20": 91.57,
+    "ma60": 90.07
   },
   "params": {
     "target": 0.006,
@@ -44,12 +44,12 @@
       "win_rate": 0.6032
     },
     "sell": {
-      "signals": 6,
-      "win_rate": 0.6667
+      "signals": 7,
+      "win_rate": 0.7143
     },
     "combined": {
-      "signals": 69,
-      "win_rate": 0.6087
+      "signals": 70,
+      "win_rate": 0.6143
     }
   },
   "test_default": {

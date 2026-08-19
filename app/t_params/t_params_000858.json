@@ -3,68 +3,68 @@
   "profile": {
     "trend": "震荡",
     "volatility": "中波动",
-    "ret_20": -0.0245,
-    "avg_daily_amp": 0.0206,
-    "avg_bar_range": 0.0025,
-    "vol_ratio_5_20": 0.78,
-    "vwap_dev_avg": 0.00335,
-    "ma5": 73.85,
-    "ma20": 75.2,
-    "ma60": 76.35
+    "ret_20": -0.0383,
+    "avg_daily_amp": 0.0205,
+    "avg_bar_range": 0.00249,
+    "vol_ratio_5_20": 0.753,
+    "vwap_dev_avg": 0.00334,
+    "ma5": 73.17,
+    "ma20": 75.06,
+    "ma60": 76.16
   },
   "params": {
-    "target": 0.005,
-    "stop": 0.005,
-    "rsi_low": 38,
-    "rsi_high": 72,
-    "score": 4,
-    "vwap_buy": 0.003,
-    "vwap_sell": 0.003,
+    "target": 0.004,
+    "stop": 0.004,
+    "rsi_low": 35,
+    "rsi_high": 68,
+    "score": 3,
+    "vwap_buy": 0.005,
+    "vwap_sell": 0.005,
     "vol_shrink": 0.9,
     "vol_expand": 1.4,
     "horizon": 12
   },
   "train": {
     "buy": {
-      "signals": 35,
-      "win_rate": 0.7429
+      "signals": 146,
+      "win_rate": 0.5411
     },
     "sell": {
-      "signals": 11,
-      "win_rate": 0.8182
+      "signals": 86,
+      "win_rate": 0.6163
     },
     "combined": {
-      "signals": 46,
-      "win_rate": 0.7609
+      "signals": 232,
+      "win_rate": 0.569
     }
   },
   "test": {
     "buy": {
-      "signals": 15,
-      "win_rate": 0.7333
+      "signals": 64,
+      "win_rate": 0.4844
     },
     "sell": {
-      "signals": 6,
-      "win_rate": 0.3333
+      "signals": 17,
+      "win_rate": 0.6471
     },
     "combined": {
-      "signals": 21,
-      "win_rate": 0.619
+      "signals": 81,
+      "win_rate": 0.5185
     }
   },
   "test_default": {
     "buy": {
-      "signals": 109,
-      "win_rate": 0.4862
+      "signals": 69,
+      "win_rate": 0.5217
     },
     "sell": {
-      "signals": 26,
-      "win_rate": 0.5385
+      "signals": 18,
+      "win_rate": 0.6111
     },
     "combined": {
-      "signals": 135,
-      "win_rate": 0.4963
+      "signals": 87,
+      "win_rate": 0.5402
     }
   },
-  "improved": true
+  "improved": false
 }

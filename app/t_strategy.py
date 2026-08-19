@@ -37,6 +37,31 @@ DEFAULT_PARAMS = {
     "horizon": 12,
 }
 
+
+def params_for_profile(profile=None):
+    """根据趋势/波动画像调整默认做T参数，避免低波动、高波动一刀切。"""
+    p = dict(DEFAULT_PARAMS)
+    profile = profile or {}
+    trend = str(profile.get("trend") or "震荡")
+    volatility = str(profile.get("volatility") or "中波动")
+    if trend == "下降趋势":
+        p["score"] = max(int(p.get("score", 3)), 4)
+        p["target"] = 0.004
+        p["stop"] = 0.004
+        p["rsi_low"] = 35
+        p["rsi_high"] = 65
+    elif trend == "上升趋势":
+        p["target"] = 0.006
+        p["stop"] = 0.006
+    if volatility == "高波动":
+        p["target"] = max(p.get("target", 0.005), 0.006)
+        p["stop"] = max(p.get("stop", 0.005), 0.006)
+    elif volatility == "低波动":
+        p["target"] = min(p.get("target", 0.005), 0.004)
+        p["stop"] = min(p.get("stop", 0.005), 0.004)
+    return p
+
+
 STOCKS = [
     ("600519", "sh600519", "1.600519"), ("000001", "sz000001", "0.000001"),
     ("002594", "sz002594", "0.002594"), ("601318", "sh601318", "1.601318"),
@@ -336,8 +361,9 @@ def optimize_code(code, symbol, secid, out_dir):
         train_summary = best[2]
     buy_test, sell_test = signal_indices(test_df, params)
     test_summary = summarize(target_stop_winrate(test_df, buy_test, sell_test, params))
-    buy_def, sell_def = signal_indices(test_df, DEFAULT_PARAMS)
-    default_summary = summarize(target_stop_winrate(test_df, buy_def, sell_def, DEFAULT_PARAMS))
+    profile_params = params_for_profile(profile)
+    buy_def, sell_def = signal_indices(test_df, profile_params)
+    default_summary = summarize(target_stop_winrate(test_df, buy_def, sell_def, profile_params))
     payload = {
         "code": code,
         "profile": profile,

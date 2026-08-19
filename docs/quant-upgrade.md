@@ -71,4 +71,5 @@ cd app
 .venv/bin/python auto_train.py --model both
 .venv/bin/python health_report.py            # 当前健康快照
 .venv/bin/python health_report.py --full     # 额外跑完整回测
+.venv/bin/python trend_report.py            # 按周追踪选股/做T胜率趋势
 ```

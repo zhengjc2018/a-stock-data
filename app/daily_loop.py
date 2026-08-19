@@ -139,6 +139,8 @@ def run_auto():
         if now.weekday() == 6:
             import auto_train
             auto_train.main(["--model", "both", "--limit", "400", "--rolling"])
+            import trend_report
+            trend_report.run()
     if 15.5 <= hour < 16 and now.weekday() < 5:
         import t_auto_tune
         t_auto_tune.run()

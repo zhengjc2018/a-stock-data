@@ -327,6 +327,9 @@ def _compute_signal(code, name, cost, qty, profile=None):
         signal = {"code": code, "name": name, "side": "sell", "price": float(df.iloc[-1]["close"]),
                   "dt": last, "reason": "高抛信号：偏离VWAP/RSI超买/放量滞涨"}
     if signal:
+        buy_score, sell_score = t_strategy._score_row(df.iloc[-1], params)
+        signal["score"] = int(buy_score if signal["side"] == "buy" else sell_score)
+        signal["confidence"] = round(signal["score"] / 5.0, 2)
         signal["cost"] = cost
         signal["qty"] = qty
     return signal

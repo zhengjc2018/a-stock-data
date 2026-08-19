@@ -168,31 +168,36 @@ def signal_indices(df, p):
             continue
         if np.isnan(r["rsi"]) or np.isnan(r["vol_ma20"]):
             continue
-        near_vwap = r["close"] <= r["vwap"] * (1 + p["vwap_buy"])
-        above_vwap = r["close"] >= r["vwap"] * (1 + p["vwap_sell"])
-        near_lower = not np.isnan(r["lower"]) and r["close"] <= r["lower"] * 1.002
-        near_upper = not np.isnan(r["upper"]) and r["close"] >= r["upper"] * 0.998
-        low_vol = r["volume"] < r["vol_ma20"] * p["vol_shrink"]
-        high_vol = r["volume"] > r["vol_ma20"] * p["vol_expand"]
-        buy_score = sum([
-            r["open_gap"] <= 0.005 or near_vwap,
-            r["main_net_prev"] > 0,
-            bool(r["idx_trend"]),
-            bool(r["new_low20"]) and low_vol,
-            r["rsi"] < p["rsi_low"] or near_lower,
-        ])
-        sell_score = sum([
-            r["open_gap"] >= 0.005 or above_vwap,
-            r["main_net_prev"] < 0,
-            not bool(r["idx_trend"]),
-            bool(r["new_high20"]) and high_vol,
-            r["rsi"] > p["rsi_high"] or near_upper,
-        ])
+        buy_score, sell_score = _score_row(r, p)
         if buy_score >= p["score"]:
             buy.append(i)
         if sell_score >= p["score"]:
             sell.append(i)
     return buy, sell
+
+
+def _score_row(r, p):
+    near_vwap = r["close"] <= r["vwap"] * (1 + p["vwap_buy"])
+    above_vwap = r["close"] >= r["vwap"] * (1 + p["vwap_sell"])
+    near_lower = not np.isnan(r["lower"]) and r["close"] <= r["lower"] * 1.002
+    near_upper = not np.isnan(r["upper"]) and r["close"] >= r["upper"] * 0.998
+    low_vol = r["volume"] < r["vol_ma20"] * p["vol_shrink"]
+    high_vol = r["volume"] > r["vol_ma20"] * p["vol_expand"]
+    buy_score = sum([
+        r["open_gap"] <= 0.005 or near_vwap,
+        r["main_net_prev"] > 0,
+        bool(r["idx_trend"]),
+        bool(r["new_low20"]) and low_vol,
+        r["rsi"] < p["rsi_low"] or near_lower,
+    ])
+    sell_score = sum([
+        r["open_gap"] >= 0.005 or above_vwap,
+        r["main_net_prev"] < 0,
+        not bool(r["idx_trend"]),
+        bool(r["new_high20"]) and high_vol,
+        r["rsi"] > p["rsi_high"] or near_upper,
+    ])
+    return buy_score, sell_score
 
 
 def target_stop_winrate(df, buy_idx, sell_idx, p, cost_rate=0.0012):

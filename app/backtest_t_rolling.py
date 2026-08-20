@@ -68,6 +68,17 @@ def run_stock(code, symbol, secid):
         params, _ = _best_params(train, profile_params)
         buy, sell = t_strategy.signal_indices(test, params)
         res = t_strategy.summarize(t_strategy.target_stop_winrate(test, buy, sell, params))
+        buy_f, sell_f = [], []
+        for i in buy:
+            buy_score, _ = t_strategy._score_row(test.iloc[i], params)
+            if buy_score / 5.0 >= 0.8:
+                buy_f.append(i)
+        for i in sell:
+            _, sell_score = t_strategy._score_row(test.iloc[i], params)
+            if sell_score / 5.0 >= 0.8:
+                sell_f.append(i)
+        filtered_res = t_strategy.summarize(
+            t_strategy.target_stop_winrate(test, buy_f, sell_f, params))
         base_buy, base_sell = t_strategy.signal_indices(test, profile_params)
         base_res = t_strategy.summarize(
             t_strategy.target_stop_winrate(test, base_buy, base_sell, profile_params))
@@ -83,6 +94,8 @@ def run_stock(code, symbol, secid):
             "sell_win_rate": res["sell"]["win_rate"],
             "combined_signals": res["combined"]["signals"],
             "combined_win_rate": res["combined"]["win_rate"],
+            "filtered_signals": filtered_res["combined"]["signals"],
+            "filtered_win_rate": filtered_res["combined"]["win_rate"],
             "profile_buy_signals": base_res["buy"]["signals"],
             "profile_buy_win_rate": base_res["buy"]["win_rate"],
             "profile_sell_signals": base_res["sell"]["signals"],
@@ -122,6 +135,9 @@ def main():
         "mean_sell_win": round(float(out["sell_win_rate"].mean()), 4),
         "mean_optimized_win": round(float(out["combined_win_rate"].mean()), 4),
         "mean_profile_win": round(float(out["profile_combined_win_rate"].mean()), 4),
+        "mean_filtered_win": round(float(out["filtered_win_rate"].fillna(0).mean()), 4),
+        "filtered_better": int((out["filtered_win_rate"].fillna(0) >
+                                out["combined_win_rate"].fillna(0)).sum()),
         "profile_wins": int((out["combined_win_rate"].fillna(0) >
                             out["profile_combined_win_rate"].fillna(0)).sum()),
         "profile_ties": int((out["combined_win_rate"].fillna(0) ==

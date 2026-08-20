@@ -58,7 +58,7 @@ def main():
         "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
         "gap_model": _model_meta(paths.data_path("gap_model.json")),
         "tail_model": _model_meta(paths.data_path("tail_reach_model.json")),
-        "model_history": (_read_json(paths.bundle_path("model_history.json")) or [])[-10:],
+        "model_history": (_read_json(paths.bundle_path("model_history.json")) or [])[-3:],
         "outcomes": {},
         "t_ledger": {},
     }
@@ -91,6 +91,7 @@ def main():
         "avg_net_ret": round(sum(float(s.get("ret") or 0) for s in verified) / len(verified), 4)
         if verified else None,
     }
+    report["t_config"] = _read_json(paths.data_path("t_config.json")) or {}
     import trend_report
     report["trend"] = {
         "selection_top3": trend_report.selection_trend(),

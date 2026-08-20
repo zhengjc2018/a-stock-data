@@ -12,6 +12,11 @@
     </array>
     <key>WorkingDirectory</key>
     <string>/Users/jojo/code/a-stock-data/app</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>ASTOCK_NO_TDX</key>
+        <string>1</string>
+    </dict>
     <key>StartCalendarInterval</key>
     <array>
         <dict>

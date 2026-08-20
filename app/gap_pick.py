@@ -728,7 +728,7 @@ def score_candidates(candidates: list[dict]) -> list[dict]:
     return records
 
 
-def _enhance_candidates(candidates, fast=False):
+def _enhance_candidates(candidates, fast=False, lite=False):
     """用主力资金/热榜/龙虎榜/公告事件对 TopN 二次确认并重排。"""
     if not candidates:
         return []
@@ -749,13 +749,14 @@ def _enhance_candidates(candidates, fast=False):
         ann = []
         margin = []
         holder = []
-        try:
-            rows = ad.stock_fund_flow_120d(c["code"])
-            if rows:
-                fund = rows[-1]
-        except Exception:
-            pass
-        if not fast:
+        if not lite:
+            try:
+                rows = ad.stock_fund_flow_120d(c["code"])
+                if rows:
+                    fund = rows[-1]
+            except Exception:
+                pass
+        if not fast and not lite:
             try:
                 lhb = ad.dragon_tiger_board(c["code"], look_back=5)
             except Exception:
@@ -947,7 +948,7 @@ def _compute(scope=None):
         index_ret_prev, industry_mean_map, index_ma5_up, industry_rank_map)
     print(f"[gap_pick] 硬过滤后候选 {len(candidates)} 只，开始评分", flush=True)
     scored = score_candidates(candidates)
-    scored = _enhance_candidates(scored[:10], fast=True)
+    scored = _enhance_candidates(scored[:10], fast=True, lite=True)
     ranking = "model" if any(pd.notna(c.get("prob")) for c in scored) else "rule"
     note = ""
     if scored:

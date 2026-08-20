@@ -17,6 +17,8 @@
         <string>5050</string>
         <key>APANEL_HOST</key>
         <string>127.0.0.1</string>
+        <key>ASTOCK_NO_TDX</key>
+        <string>1</string>
     </dict>
     <key>KeepAlive</key>
     <true/>

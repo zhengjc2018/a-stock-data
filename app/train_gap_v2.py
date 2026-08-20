@@ -174,7 +174,7 @@ def _append_rows(code, df, industry, start, end, index_ret, index_ma5_up, label_
                         "index_ma5_up", "industry_rank_prev"):
                 feats[name] = 0.0
                 continue
-            if name == "industry_zt_count":
+            if name.startswith("rank_"):
                 feats[name] = 0.0
                 continue
             v = r.get(name)

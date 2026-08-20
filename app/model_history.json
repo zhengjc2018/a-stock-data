@@ -1,232 +1,5 @@
 [
   {
-    "ts": "2026-08-13 21:43:55",
-    "action": "reject",
-    "reason": "not better than current model",
-    "metrics": {
-      "base_rate": 0.082,
-      "test_auc": 0.6771,
-      "test_top1": 0.4595,
-      "test_top3": 0.6622,
-      "test_top10": 0.8649
-    }
-  },
-  {
-    "ts": "2026-08-13 21:50:24",
-    "action": "publish",
-    "reason": "top10/auc improved",
-    "new_hash": "be80f4d4cff7",
-    "metrics": {
-      "base_rate": 0.082,
-      "test_auc": 0.6771,
-      "test_top1": 0.4595,
-      "test_top3": 0.6622,
-      "test_top10": 0.8649
-    }
-  },
-  {
-    "ts": "2026-08-14 22:30:50",
-    "action": "publish",
-    "reason": "metrics improved",
-    "new_hash": "af02c9511647",
-    "metrics": {
-      "base_rate": 0.0822,
-      "test_auc": 0.6788,
-      "test_top1": 0.3919,
-      "test_top3": 0.6351,
-      "test_top10": 0.8784
-    }
-  },
-  {
-    "ts": "2026-08-14 23:06:55",
-    "action": "remote_update",
-    "reason": "downloaded from GitHub",
-    "source": "https://gh-proxy.com/https://raw.githubusercontent.com/zhengjc2018/a-stock-data/main/app/gap_model.json",
-    "new_hash": "af02c9511647",
-    "metrics": {
-      "base_rate": 0.0822,
-      "test_auc": 0.6788,
-      "test_top1": 0.3919,
-      "test_top3": 0.6351,
-      "test_top10": 0.8784
-    }
-  },
-  {
-    "ts": "2026-08-15 14:03:34",
-    "action": "publish",
-    "reason": "target +3% with market/sector features",
-    "new_hash": "088ede05d7b6",
-    "metrics": {
-      "base_rate": 0.0128,
-      "test_auc": 0.7532,
-      "test_top1": 0.2568,
-      "test_top3": 0.4054,
-      "test_top10": 0.527
-    }
-  },
-  {
-    "ts": "2026-08-15 14:39:22",
-    "action": "publish",
-    "reason": "v5 all-indicators improved",
-    "new_hash": "54950c56c0ad",
-    "metrics": {
-      "base_rate": 0.0127,
-      "test_auc": 0.7602,
-      "test_top1": 0.2297,
-      "test_top3": 0.3649,
-      "test_top10": 0.5405
-    }
-  },
-  {
-    "ts": "2026-08-15 17:12:28",
-    "action": "reject",
-    "reason": "tuned model not better",
-    "metrics": {
-      "base_rate": 0.0127,
-      "test_auc": 0.7546,
-      "test_top1": 0.2162,
-      "test_top3": 0.3514,
-      "test_top10": 0.5405
-    }
-  },
-  {
-    "ts": "2026-08-15 17:36:03",
-    "action": "publish",
-    "reason": "v6 1200-stock sample improved",
-    "new_hash": "2e625a157e65",
-    "metrics": {
-      "base_rate": 0.0126,
-      "test_auc": 0.7561,
-      "test_top1": 0.4865,
-      "test_top3": 0.5811,
-      "test_top10": 0.6351
-    }
-  },
-  {
-    "ts": "2026-08-15 19:23:30",
-    "action": "publish",
-    "reason": "v7 added bullish patterns improved",
-    "new_hash": "c9f12b5868dd",
-    "metrics": {
-      "base_rate": 0.0126,
-      "test_auc": 0.7569,
-      "test_top1": 0.473,
-      "test_top3": 0.5811,
-      "test_top10": 0.6486
-    }
-  },
-  {
-    "ts": "2026-08-15 23:03:41",
-    "action": "reject",
-    "reason": "not better than current model",
-    "metrics": {
-      "base_rate": 0.0124,
-      "test_auc": 0.7521,
-      "test_top1": 0.1081,
-      "test_top3": 0.2568,
-      "test_top10": 0.4865
-    }
-  },
-  {
-    "ts": "2026-08-16 19:14:16",
-    "action": "reject",
-    "reason": "not better than current model",
-    "metrics": {
-      "base_rate": 0.0124,
-      "test_auc": 0.7521,
-      "test_top1": 0.1081,
-      "test_top3": 0.2568,
-      "test_top10": 0.4865
-    }
-  },
-  {
-    "ts": "2026-08-18 16:06:28",
-    "action": "reject",
-    "reason": "not better than current model",
-    "metrics": {
-      "base_rate": 0.0121,
-      "test_auc": 0.7558,
-      "test_top1": 0.12,
-      "test_top3": 0.2533,
-      "test_top10": 0.48
-    }
-  },
-  {
-    "ts": "2026-08-18 22:07:42",
-    "action": "reject",
-    "reason": "not better than current model",
-    "metrics": {
-      "base_rate": 0.0111,
-      "test_auc": 0.733,
-      "test_top1": 0.08,
-      "test_top3": 0.2667,
-      "test_top10": 0.4533
-    }
-  },
-  {
-    "ts": "2026-08-19 14:37:50",
-    "action": "publish_tail",
-    "reason": "tail metrics improved",
-    "new_hash": "d343e9a5d911",
-    "metrics": {
-      "base_rate": 0.2406,
-      "base_rate_net": 0.2105,
-      "test_auc": 0.6981,
-      "test_top1": 0.5333,
-      "test_top3": 0.8533,
-      "test_top10": 1.0,
-      "test_top1_net": 0.5067,
-      "test_top3_net": 0.8267,
-      "test_top10_net": 0.9867
-    }
-  },
-  {
-    "ts": "2026-08-19 15:38:04",
-    "action": "publish",
-    "reason": "metrics improved",
-    "new_hash": "2668c124f620",
-    "metrics": {
-      "base_rate": 0.0114,
-      "base_rate_net": 0.0096,
-      "test_auc": 0.773,
-      "test_top1": 0.0667,
-      "test_top3": 0.1467,
-      "test_top10": 0.28,
-      "test_top1_net": 0.0667,
-      "test_top3_net": 0.1333,
-      "test_top10_net": 0.2667
-    }
-  },
-  {
-    "ts": "2026-08-19 15:38:32",
-    "action": "rollback",
-    "reason": "candidate degraded top1/top3/top10 despite auc gain; missing net metrics caused false publish",
-    "new_hash": "c9f12b5868dd",
-    "metrics": {
-      "base_rate": 0.0126,
-      "test_auc": 0.7569,
-      "test_top1": 0.473,
-      "test_top3": 0.5811,
-      "test_top10": 0.6486
-    }
-  },
-  {
-    "ts": "2026-08-19 16:08:14",
-    "action": "reject",
-    "reason": "not better than current tail model or rolling stability not met",
-    "metrics": {
-      "base_rate": 0.2357,
-      "base_rate_net": 0.2065,
-      "test_auc": 0.6997,
-      "test_top1": 0.5067,
-      "test_top3": 0.8933,
-      "test_top10": 0.9733,
-      "test_top1_net": 0.48,
-      "test_top3_net": 0.8533,
-      "test_top10_net": 0.9733
-    }
-  },
-  {
     "ts": "2026-08-19 16:13:52",
     "action": "reject",
     "reason": "not better than current model or rolling stability not met",
@@ -256,6 +29,23 @@
       "test_top1_net": 0.4667,
       "test_top3_net": 0.8667,
       "test_top10_net": 0.9733
+    }
+  },
+  {
+    "ts": "2026-08-20 23:06:53",
+    "action": "publish_tail",
+    "reason": "tail metrics improved | rolling mean=0.8691",
+    "new_hash": "c820aaefee2f",
+    "metrics": {
+      "base_rate": 0.2369,
+      "base_rate_net": 0.2073,
+      "test_auc": 0.6994,
+      "test_top1": 0.5733,
+      "test_top3": 0.88,
+      "test_top10": 1.0,
+      "test_top1_net": 0.5467,
+      "test_top3_net": 0.8667,
+      "test_top10_net": 1.0
     }
   }
 ]

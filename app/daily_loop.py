@@ -67,7 +67,7 @@ def record_candidates():
         "scope": GAP_SCOPE,
         "model": gap_model.meta(),
         "total": data.get("total", 0),
-        "candidates": data.get("candidates", [])[:TOP_N],
+        "candidates": (data.get("all_candidates") or data.get("candidates", []))[:TOP_N],
     }
     with open(path, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)

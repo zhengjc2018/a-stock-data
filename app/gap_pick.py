@@ -951,6 +951,7 @@ def _compute(scope=None):
     scored = _enhance_candidates(scored[:10], fast=True, lite=True)
     ranking = "model" if any(pd.notna(c.get("prob")) for c in scored) else "rule"
     note = ""
+    pre_filter = scored[:10]
     if scored:
         max_n = 3
         min_prob = 0.30
@@ -980,6 +981,7 @@ def _compute(scope=None):
         "elapsed_sec": round(time.time() - t0, 1),
         "total": len(scored),
         "candidates": scored[:TOP_N],
+        "all_candidates": pre_filter,
         "ranking": ranking,
         "note": note,
         "scope_key": _scope_key(scope),

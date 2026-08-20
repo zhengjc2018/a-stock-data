@@ -127,6 +127,15 @@ def verify_pending():
             json.dump(payload, f, ensure_ascii=False, indent=2)
         hits = sum(1 for r in results if r["hit"])
         print(f"[daily] verified {date}: {hits}/{len(results)} hits", flush=True)
+        try:
+            import do_t
+            top3 = any(r.get("hit") for r in results[:3])
+            do_t.notify(
+                "选股真实命中",
+                f"{date}: {hits}/{len(results)} 命中，Top3 {'命中' if top3 else '未命中'}",
+            )
+        except Exception:
+            pass
 
 
 def run_auto():

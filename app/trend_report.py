@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import csv
 import os
 import time
 from datetime import datetime, timedelta, timezone
@@ -112,7 +113,7 @@ def t_confidence_analysis():
 def confidence_filter_suggestion(rows):
     high = next((r for r in rows if r.get("bucket") == "high"), None)
     if not high or high.get("signals", 0) < 30:
-        return {"suggest": False, "reason": "高置信信号样本不足"}
+        return _backtest_confidence_suggestion()
     ledger = _read_json(paths.data_path("t_signal_ledger.json")) or []
     verified = [s for s in ledger if s.get("status") == "verified"]
     if not verified:
@@ -125,6 +126,40 @@ def confidence_filter_suggestion(rows):
             "reason": f"高置信胜率 {high['win_rate']:.1%} 显著高于整体 {overall:.1%}",
         }
     return {"suggest": False, "reason": "高置信信号优势未达到5个百分点"}
+
+
+def _backtest_confidence_suggestion():
+    path = paths.bundle_path("backtest_report", "t_confidence_backtest.csv")
+    if not os.path.isfile(path):
+        return {"suggest": False, "reason": "高置信信号样本不足"}
+    buckets = {}
+    overall = {"signals": 0, "wins": 0}
+    try:
+        with open(path, encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                bucket = row.get("bucket", "")
+                win = int(row.get("win") or 0)
+                buckets.setdefault(bucket, {"signals": 0, "wins": 0})
+                buckets[bucket]["signals"] += 1
+                buckets[bucket]["wins"] += win
+                overall["signals"] += 1
+                overall["wins"] += win
+    except Exception:
+        return {"suggest": False, "reason": "置信度回测数据读取失败"}
+    if overall["signals"] < 50:
+        return {"suggest": False, "reason": "置信度回测样本不足"}
+    high = buckets.get("high")
+    if not high or high["signals"] < 30:
+        return {"suggest": False, "reason": "高置信回测样本不足"}
+    high_rate = high["wins"] / high["signals"]
+    overall_rate = overall["wins"] / overall["signals"]
+    if high_rate >= overall_rate + 0.05:
+        return {
+            "suggest": True,
+            "min_confidence": 0.8,
+            "reason": f"回测高置信胜率 {high_rate:.1%} 高于整体 {overall_rate:.1%}",
+        }
+    return {"suggest": False, "reason": "回测高置信优势未达到5个百分点"}
 
 
 def apply_confidence_suggestion(suggestion):

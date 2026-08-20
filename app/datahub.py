@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import os
+import json
 import random
 import re
 import threading
@@ -368,6 +369,8 @@ def _sina_to_internal(rows):
             o, c = float(r["open"]), float(r["close"])
             h, l, v = float(r["high"]), float(r["low"]), float(r["volume"])
             amt = float(r.get("amount") or 0.0)
+            if amt <= 0:
+                amt = c * v
         except (KeyError, TypeError, ValueError):
             continue
         pct = (c - prev) / prev * 100 if prev else 0.0
@@ -389,6 +392,27 @@ def _sina_k(sym, scale, lmt):
                                       "ma": 5, "datalen": lmt},
                          headers=SINA_HDR, timeout=10, proxies=NO_PROXY)
         return r.json() or []
+    except Exception:
+        return []
+
+
+def _sina_k2(sym, scale, lmt):
+    """新浪新版K线接口：比旧 money.finance 端点稳定，返回 JSONP。"""
+    _rate_limit()
+    url = ("https://quotes.sina.cn/cn/api/jsonp_v2.php/"
+           "var%20_data=/CN_MarketDataService.getKLineData")
+    try:
+        r = requests.get(url, params={"symbol": sym, "scale": str(scale),
+                                      "ma": "no", "datalen": str(lmt)},
+                         headers=SINA_HDR, timeout=8, proxies=NO_PROXY)
+        text = r.text
+    except Exception:
+        return []
+    if "([" not in text or "])" not in text:
+        return []
+    try:
+        payload = text[text.index("([") + 1:text.rindex("])") + 1]
+        return json.loads(payload)
     except Exception:
         return []
 
@@ -525,6 +549,9 @@ def _tdx_klines(secid, klt, lmt):
 def _klines(secid, klt, lmt):
     """统一 K 线入口：通达信优先，失败回退新浪/百度。"""
     if os.environ.get("ASTOCK_NO_TDX") == "1" and klt == 101:
+        out = _sina_to_internal(_sina_k2(_sina_symbol(secid), 240, lmt))
+        if out:
+            return out
         out = _sina_to_internal(_em_klines(secid, klt, lmt))
         if out:
             return out
@@ -539,7 +566,9 @@ def _klines(secid, klt, lmt):
         print("[tdx] klines fallback -> sina:", e)
     sym = _sina_symbol(secid)
     scale = {101: 240, 5: 5, 60: 60, 15: 15}.get(klt, 240)
-    out = _sina_to_internal(_sina_k(sym, scale, lmt))
+    out = _sina_to_internal(_sina_k2(sym, scale, lmt))
+    if not out:
+        out = _sina_to_internal(_sina_k(sym, scale, lmt))
     if not out and klt == 101:
         out = _sina_to_internal(_em_klines(secid, klt, lmt))
         if not out:

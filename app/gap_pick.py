@@ -598,7 +598,7 @@ def build_candidates(
             if mcap_mode == "large" and not mcap > 500:
                 return None
         try:
-            industry = str(row.get("industry") or "").strip() or _stock_industry(code)
+            industry = str(row.get("industry") or "").strip() or "未知行业"
             if not _industry_allowed(industry):
                 return None
             hist = _history_df(
@@ -658,7 +658,7 @@ def build_candidates(
             print(f"[gap_pick] skip {code}: {e}", flush=True)
             return None
 
-    with ThreadPoolExecutor(max_workers=4, thread_name_prefix="gap-scan") as ex:
+    with ThreadPoolExecutor(max_workers=8, thread_name_prefix="gap-scan") as ex:
         out = [c for c in ex.map(_worker, snapshot_df.to_dict("records")) if c]
     if not out:
         return []
@@ -728,7 +728,7 @@ def score_candidates(candidates: list[dict]) -> list[dict]:
     return records
 
 
-def _enhance_candidates(candidates):
+def _enhance_candidates(candidates, fast=False):
     """用主力资金/热榜/龙虎榜/公告事件对 TopN 二次确认并重排。"""
     if not candidates:
         return []
@@ -755,22 +755,23 @@ def _enhance_candidates(candidates):
                 fund = rows[-1]
         except Exception:
             pass
-        try:
-            lhb = ad.dragon_tiger_board(c["code"], look_back=5)
-        except Exception:
-            pass
-        try:
-            ann = ex.cninfo_announcements(c["code"], 8)
-        except Exception:
-            pass
-        try:
-            margin = ad.margin_trading(c["code"], 5)
-        except Exception:
-            pass
-        try:
-            holder = ad.holder_num_change(c["code"], 3)
-        except Exception:
-            pass
+        if not fast:
+            try:
+                lhb = ad.dragon_tiger_board(c["code"], look_back=5)
+            except Exception:
+                pass
+            try:
+                ann = ex.cninfo_announcements(c["code"], 8)
+            except Exception:
+                pass
+            try:
+                margin = ad.margin_trading(c["code"], 5)
+            except Exception:
+                pass
+            try:
+                holder = ad.holder_num_change(c["code"], 3)
+            except Exception:
+                pass
         main_net_yi = float(fund.get("main_net") or 0) / 1e8
         lhb_count = len((lhb or {}).get("records") or [])
         lhb_inst_net = float((lhb or {}).get("institution", {}).get("net_amt") or 0)
@@ -858,7 +859,7 @@ def _enhance_candidates(candidates):
         c["enhanced_prob"] = round(max(min(prob + boost, 1.0), 0.0), 4)
         return c
 
-    with ThreadPoolExecutor(max_workers=4, thread_name_prefix="gap-boost") as ex:
+    with ThreadPoolExecutor(max_workers=8, thread_name_prefix="gap-boost") as ex:
         out = list(ex.map(_worker, candidates))
     out.sort(key=lambda x: x.get("enhanced_prob") or 0, reverse=True)
     return out
@@ -946,7 +947,7 @@ def _compute(scope=None):
         index_ret_prev, industry_mean_map, index_ma5_up, industry_rank_map)
     print(f"[gap_pick] 硬过滤后候选 {len(candidates)} 只，开始评分", flush=True)
     scored = score_candidates(candidates)
-    scored = _enhance_candidates(scored[:TOP_N])
+    scored = _enhance_candidates(scored[:10], fast=True)
     ranking = "model" if any(pd.notna(c.get("prob")) for c in scored) else "rule"
     note = ""
     if scored:

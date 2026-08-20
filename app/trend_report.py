@@ -181,6 +181,7 @@ def run():
         "t_win_trend": t,
         "t_confidence": conf_rows,
         "t_confidence_filter": confidence_filter_suggestion(conf_rows),
+        "t_config": _read_json(paths.data_path("t_config.json")) or {},
         "alerts": [],
     }
     if len(selection) >= 2:
